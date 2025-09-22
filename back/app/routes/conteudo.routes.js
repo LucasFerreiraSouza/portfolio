@@ -1,130 +1,25 @@
-// app/routes/conteudo.routes.js
 const express = require("express");
 const router = express.Router();
-const cloudinary = require("cloudinary").v2;
+const conteudoController = require("../controllers/conteudo.controller");
 const multer = require("multer");
-const sharp = require("sharp");
-const stream = require("stream");
 
-const connectDB = require("../config/mongo"); // conexão segura para serverless
-const Conteudo = require("../models/conteudo.model");
-
-// ---------------- CONFIGURAÇÃO CLOUDINARY ----------------
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
-
-// ---------------- MULTER EM MEMÓRIA ----------------
+// Config do multer (salvar em memória ou disco)
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
-// ---------------- UPLOAD HELPER ----------------
-const uploadToCloudinary = (buffer, publicId, folder = "portfolio") =>
-  new Promise((resolve, reject) => {
-    const uploadStream = cloudinary.uploader.upload_stream(
-      {
-        folder,
-        public_id: publicId,
-        overwrite: true,
-        resource_type: "image",
-      },
-      (error, result) => (error ? reject(error) : resolve(result))
-    );
-    const bufferStream = new stream.PassThrough();
-    bufferStream.end(buffer);
-    bufferStream.pipe(uploadStream);
-  });
-
-// ==================== CREATE ====================
-router.post("/", upload.single("imagem"), async (req, res) => {
+// CRUD
+router.post("/conteudos", upload.single("imagem"), conteudoController.create);
+router.get("/conteudos", conteudoController.list); // <- ajustado
+router.get("/conteudos/:id", async (req, res) => { // <- criar findOne inline
   try {
-    await connectDB(); // garante conexão com MongoDB
-
-    const { nome, descricao } = req.body;
-    if (!req.file) return res.status(400).json({ message: "Imagem obrigatória." });
-
-    const resizedBuffer = await sharp(req.file.buffer)
-      .resize({ width: 800, withoutEnlargement: true })
-      .toFormat("png")
-      .toBuffer();
-
-    const uploadResult = await uploadToCloudinary(
-      resizedBuffer,
-      `${Date.now()}_${nome.replace(/\s+/g, "_")}`,
-      "portfolio"
-    );
-
-    const conteudo = await Conteudo.create({
-      nome,
-      descricao,
-      imagem: uploadResult.secure_url,
-    });
-
-    res.status(201).json(conteudo);
-  } catch (err) {
-    console.error("[Conteudo.create] Erro:", err);
-    res.status(400).json({ message: err.message });
-  }
-});
-
-// ==================== READ (LIST) ====================
-router.get("/", async (req, res) => {
-  try {
-    await connectDB(); // garante conexão com MongoDB
-
-    const { search } = req.query;
-    let query = {};
-    if (search) query.nome = { $regex: search, $options: "i" };
-
-    const conteudos = await Conteudo.find(query).sort({ createdAt: -1 }).lean();
-    res.json(conteudos);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
-
-// ==================== UPDATE ====================
-router.put("/:id", upload.single("imagem"), async (req, res) => {
-  try {
-    await connectDB(); // garante conexão com MongoDB
-
-    const { id } = req.params;
-    const { nome, descricao } = req.body;
-
-    let updateData = { nome, descricao };
-
-    if (req.file) {
-      const resizedBuffer = await sharp(req.file.buffer)
-        .resize({ width: 800, withoutEnlargement: true })
-        .toFormat("png")
-        .toBuffer();
-
-      const uploadResult = await uploadToCloudinary(resizedBuffer, `${id}_updated`, "portfolio");
-      updateData.imagem = uploadResult.secure_url;
-    }
-
-    const conteudo = await Conteudo.findByIdAndUpdate(id, updateData, { new: true });
+    const conteudo = await require("../models/conteudo.model").findById(req.params.id).lean();
     if (!conteudo) return res.status(404).json({ message: "Conteúdo não encontrado." });
-
     res.json(conteudo);
   } catch (err) {
-    res.status(400).json({ message: err.message });
-  }
-});
-
-// ==================== DELETE ====================
-router.delete("/:id", async (req, res) => {
-  try {
-    await connectDB(); // garante conexão com MongoDB
-
-    const { id } = req.params;
-    await Conteudo.findByIdAndDelete(id);
-    res.json({ message: "Conteúdo removido." });
-  } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
+router.put("/conteudos/:id", upload.single("imagem"), conteudoController.update);
+router.delete("/conteudos/:id", conteudoController.remove); // <- ajustado
 
 module.exports = router;
