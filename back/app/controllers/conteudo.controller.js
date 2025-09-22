@@ -29,6 +29,9 @@ const uploadToCloudinary = (buffer, publicId, folder = "portfolio") =>
     bufferStream.pipe(uploadStream);
   });
 
+// ---------------- MULTER ----------------
+const upload = multer({ storage: multer.memoryStorage() });
+
 // ==================== CREATE ====================
 async function create(req, res) {
   try {
@@ -61,10 +64,10 @@ async function create(req, res) {
   }
 }
 
-// ==================== READ (LIST) ====================
+// ==================== LIST ====================
 async function list(req, res) {
   try {
-    await connectDB(); // garante conexão MongoDB
+    await connectDB();
 
     const { search } = req.query;
     let query = {};
@@ -77,10 +80,10 @@ async function list(req, res) {
   }
 }
 
-// ==================== READ (ONE) ====================
+// ==================== FIND ONE ====================
 async function findOne(req, res) {
   try {
-    await connectDB(); // garante conexão MongoDB
+    await connectDB();
 
     const conteudo = await Conteudo.findById(req.params.id).lean();
     if (!conteudo) return res.status(404).json({ message: "Conteúdo não encontrado." });
@@ -94,11 +97,10 @@ async function findOne(req, res) {
 // ==================== UPDATE ====================
 async function update(req, res) {
   try {
-    await connectDB(); // garante conexão MongoDB
+    await connectDB();
 
     const { id } = req.params;
     const { nome, descricao } = req.body;
-
     let updateData = { nome, descricao };
 
     if (req.file) {
@@ -123,7 +125,7 @@ async function update(req, res) {
 // ==================== DELETE ====================
 async function remove(req, res) {
   try {
-    await connectDB(); // garante conexão MongoDB
+    await connectDB();
 
     const { id } = req.params;
     await Conteudo.findByIdAndDelete(id);
@@ -134,7 +136,7 @@ async function remove(req, res) {
 }
 
 module.exports = {
-  upload: multer({ storage: multer.memoryStorage() }),
+  upload,
   create,
   list,
   findOne,

@@ -54,12 +54,21 @@ app.get('/proxy-image', async (req, res) => {
 const conteudoRoutes = require("./app/routes/conteudo.routes");
 app.use("/api", conteudoRoutes);
 
-// === Conexão com MongoDB ===
-mongoose.set('strictQuery', false);
-mongoose.set('bufferCommands', false);
-mongoose.connect(process.env.DB_URL, { useNewUrlParser: true, useUnifiedTopology: true })
-  .then(() => console.log("Conectado ao banco de dados com sucesso!"))
-  .catch(err => console.error("Erro ao conectar ao DB:", err.message));
+// === Função de conexão com MongoDB ===
+const connectDB = async () => {
+  try {
+    mongoose.set('strictQuery', false);
+    mongoose.set('bufferCommands', false);
+    await mongoose.connect(process.env.DB_URL, { useNewUrlParser: true, useUnifiedTopology: true });
+    console.log("Conectado ao banco de dados com sucesso!");
+  } catch (err) {
+    console.error("Erro ao conectar ao DB:", err.message);
+    process.exit(1);
+  }
+};
+
+// Conecta ao MongoDB assim que o módulo é carregado
+connectDB();
 
 // **Exporta o app para Vercel**
 module.exports = app;
