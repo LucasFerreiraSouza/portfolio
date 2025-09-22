@@ -3,6 +3,7 @@ const cloudinary = require("cloudinary").v2;
 const multer = require("multer");
 const sharp = require("sharp");
 const stream = require("stream");
+const connectDB = require("../config/db.config"); // helper de conexão Serverless
 
 // ---------------- CONFIGURAÇÃO CLOUDINARY ----------------
 cloudinary.config({
@@ -10,10 +11,6 @@ cloudinary.config({
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
-
-// ---------------- MULTER EM MEMÓRIA ----------------
-const storage = multer.memoryStorage();
-const upload = multer({ storage });
 
 // ---------------- UPLOAD HELPER ----------------
 const uploadToCloudinary = (buffer, publicId, folder = "portfolio") =>
@@ -35,10 +32,11 @@ const uploadToCloudinary = (buffer, publicId, folder = "portfolio") =>
 // ==================== CREATE ====================
 async function create(req, res) {
   try {
+    await connectDB(); // garante conexão MongoDB
+
     const { nome, descricao } = req.body;
     if (!req.file) return res.status(400).json({ message: "Imagem obrigatória." });
 
-    // Redimensiona para evitar imagens muito grandes
     const resizedBuffer = await sharp(req.file.buffer)
       .resize({ width: 800, withoutEnlargement: true })
       .toFormat("png")
@@ -66,6 +64,8 @@ async function create(req, res) {
 // ==================== READ (LIST) ====================
 async function list(req, res) {
   try {
+    await connectDB(); // garante conexão MongoDB
+
     const { search } = req.query;
     let query = {};
     if (search) query.nome = { $regex: search, $options: "i" };
@@ -77,9 +77,25 @@ async function list(req, res) {
   }
 }
 
+// ==================== READ (ONE) ====================
+async function findOne(req, res) {
+  try {
+    await connectDB(); // garante conexão MongoDB
+
+    const conteudo = await Conteudo.findById(req.params.id).lean();
+    if (!conteudo) return res.status(404).json({ message: "Conteúdo não encontrado." });
+
+    res.json(conteudo);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+}
+
 // ==================== UPDATE ====================
 async function update(req, res) {
   try {
+    await connectDB(); // garante conexão MongoDB
+
     const { id } = req.params;
     const { nome, descricao } = req.body;
 
@@ -107,6 +123,8 @@ async function update(req, res) {
 // ==================== DELETE ====================
 async function remove(req, res) {
   try {
+    await connectDB(); // garante conexão MongoDB
+
     const { id } = req.params;
     await Conteudo.findByIdAndDelete(id);
     res.json({ message: "Conteúdo removido." });
@@ -116,9 +134,10 @@ async function remove(req, res) {
 }
 
 module.exports = {
-  upload,
+  upload: multer({ storage: multer.memoryStorage() }),
   create,
   list,
+  findOne,
   update,
   remove,
 };
