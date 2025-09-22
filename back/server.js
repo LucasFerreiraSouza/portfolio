@@ -1,13 +1,10 @@
 require('dotenv').config();
 const express = require("express");
 const cors = require("cors");
-const path = require("path");
-const mongoose = require("mongoose");
 const fetch = require('node-fetch');
 
-const checkToken = require('./app/utils/checkToken');
-
 const app = express();
+const PORT = process.env.PORT || 8080;
 
 // === MIDDLEWARES ===
 app.use(express.json({ limit: '50mb' }));
@@ -31,6 +28,7 @@ app.get("/", (req, res) => {
   res.json({ message: "Welcome to portfolio application." });
 });
 
+// Proxy para imagens do Cloudinary
 app.get('/proxy-image', async (req, res) => {
   const { url } = req.query;
   if (!url) return res.status(400).send('Parâmetro "url" é obrigatório');
@@ -54,21 +52,11 @@ app.get('/proxy-image', async (req, res) => {
 const conteudoRoutes = require("./app/routes/conteudo.routes");
 app.use("/api", conteudoRoutes);
 
-// === Função de conexão com MongoDB ===
-const connectDB = async () => {
-  try {
-    mongoose.set('strictQuery', false);
-    mongoose.set('bufferCommands', false);
-    await mongoose.connect(process.env.DB_URL, { useNewUrlParser: true, useUnifiedTopology: true });
-    console.log("Conectado ao banco de dados com sucesso!");
-  } catch (err) {
-    console.error("Erro ao conectar ao DB:", err.message);
-    process.exit(1);
-  }
-};
+// === Inicia servidor local (não necessário no Vercel) ===
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(PORT, () => {
+    console.log(`Servidor rodando na porta ${PORT}`);
+  });
+}
 
-// Conecta ao MongoDB assim que o módulo é carregado
-connectDB();
-
-// **Exporta o app para Vercel**
 module.exports = app;

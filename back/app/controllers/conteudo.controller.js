@@ -3,25 +3,20 @@ const cloudinary = require("cloudinary").v2;
 const multer = require("multer");
 const sharp = require("sharp");
 const stream = require("stream");
-const connectDB = require("../config/db.config"); // helper de conexão Serverless
+const connectDB = require("../config/db.config");
 
-// ---------------- CONFIGURAÇÃO CLOUDINARY ----------------
+// Cloudinary config
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-// ---------------- UPLOAD HELPER ----------------
+// Upload helper
 const uploadToCloudinary = (buffer, publicId, folder = "portfolio") =>
   new Promise((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(
-      {
-        folder,
-        public_id: publicId,
-        overwrite: true,
-        resource_type: "image",
-      },
+      { folder, public_id: publicId, overwrite: true, resource_type: "image" },
       (error, result) => (error ? reject(error) : resolve(result))
     );
     const bufferStream = new stream.PassThrough();
@@ -29,14 +24,13 @@ const uploadToCloudinary = (buffer, publicId, folder = "portfolio") =>
     bufferStream.pipe(uploadStream);
   });
 
-// ---------------- MULTER ----------------
+// Multer
 const upload = multer({ storage: multer.memoryStorage() });
 
-// ==================== CREATE ====================
+// CREATE
 async function create(req, res) {
   try {
-    await connectDB(); // garante conexão MongoDB
-
+    await connectDB();
     const { nome, descricao } = req.body;
     if (!req.file) return res.status(400).json({ message: "Imagem obrigatória." });
 
@@ -59,20 +53,18 @@ async function create(req, res) {
 
     res.status(201).json(conteudo);
   } catch (err) {
-    console.error("[Conteudo.create] Erro:", err);
+    console.error(err);
     res.status(400).json({ message: err.message });
   }
 }
 
-// ==================== LIST ====================
+// LIST
 async function list(req, res) {
   try {
     await connectDB();
-
     const { search } = req.query;
     let query = {};
     if (search) query.nome = { $regex: search, $options: "i" };
-
     const conteudos = await Conteudo.find(query).sort({ createdAt: -1 }).lean();
     res.json(conteudos);
   } catch (err) {
@@ -80,25 +72,22 @@ async function list(req, res) {
   }
 }
 
-// ==================== FIND ONE ====================
+// FIND ONE
 async function findOne(req, res) {
   try {
     await connectDB();
-
     const conteudo = await Conteudo.findById(req.params.id).lean();
     if (!conteudo) return res.status(404).json({ message: "Conteúdo não encontrado." });
-
     res.json(conteudo);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 }
 
-// ==================== UPDATE ====================
+// UPDATE
 async function update(req, res) {
   try {
     await connectDB();
-
     const { id } = req.params;
     const { nome, descricao } = req.body;
     let updateData = { nome, descricao };
@@ -115,18 +104,16 @@ async function update(req, res) {
 
     const conteudo = await Conteudo.findByIdAndUpdate(id, updateData, { new: true });
     if (!conteudo) return res.status(404).json({ message: "Conteúdo não encontrado." });
-
     res.json(conteudo);
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
 }
 
-// ==================== DELETE ====================
+// DELETE
 async function remove(req, res) {
   try {
     await connectDB();
-
     const { id } = req.params;
     await Conteudo.findByIdAndDelete(id);
     res.json({ message: "Conteúdo removido." });
