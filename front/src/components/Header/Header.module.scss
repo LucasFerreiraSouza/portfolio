@@ -1,0 +1,28 @@
+.header {
+  margin-bottom: 1.5rem;
+}
+
+.mainTitle,
+.title {
+  font-weight: 600;
+  color: black;
+  font-size: 1.875rem;
+}
+
+.buttonBack {
+  background-color: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+
+  margin-bottom: 1rem;
+
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: transform 0.3s ease, background-color 0.2s ease;
+
+  &:hover {
+    transform: translateX(-10px) scale(1.05);
+  }
+}

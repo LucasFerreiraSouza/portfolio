@@ -1,0 +1,86 @@
+.ant-btn {
+  height: 45px;
+  text-align: center;
+
+  border-radius: 0.5rem;
+  border: none;
+  cursor: pointer;
+
+  font-size: 1rem;
+  font-weight: 600;
+
+  &:hover {
+    filter: brightness(75%);
+  }
+}
+
+.ant-btn-primary {
+  background-color: var(--primary-color) !important;
+  color: var(--text-over-primary-color) !important;
+}
+
+.ant-btn-link {
+  padding: 0;
+  height: auto;
+  font-weight: normal;
+  display: inline !important;
+  color: var(--weak-text-color);
+
+  &:hover {
+    color: var(--weak-text-color) !important;
+  }
+
+  &>span {
+    &:hover {
+      text-decoration: underline;
+      color: var(--weak-text-color);
+    }
+  }
+}
+
+.ant-btn-default {
+  border: 1px solid var(--primary-color);
+  color: var(--primary-color);
+
+  &:hover {
+    color: var(--text-over-primary-color) !important;
+    background-color: var(--primary-color) !important;
+    filter: brightness(100%);
+  }
+}
+
+.ant-form-item-label {
+  font-size: 1rem;
+  padding-bottom: 5px !important;
+  color: var(--text-color);
+}
+
+.ant-input-group {
+
+  &>.ant-input-outlined {
+    border-radius: 0.5rem 0 0 0.5rem !important;
+  }
+
+  &>.ant-input-group-addon>.ant-input-search-button {
+    height: 40px;
+    border-radius: 0 0.5rem 0.5rem 0 !important;
+  }
+}
+
+.ant-input-outlined,
+.ant-select-selector {
+  border: 1px solid var(--weak-text-color) !important;
+  height: 40px !important;
+  border-radius: 0.5rem !important;
+  padding: 0 1rem !important;
+  box-shadow: 2px 4px 4px rgba(0, 0, 0, 0.1);
+}
+
+.ant-radio-inner {
+  border: 1px solid var(--weak-text-color) !important;
+}
+
+.ant-upload-wrapper.ant-upload-picture-card-wrapper .ant-upload.ant-upload-select,
+.ant-upload-wrapper.ant-upload-picture-circle-wrapper .ant-upload.ant-upload-select {
+  width: 100% !important;
+}

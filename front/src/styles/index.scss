@@ -1,0 +1,29 @@
+@use './mixins.scss' as mixins;
+@import './variables.scss';
+@import './antd.scss';
+
+html {
+  background-color: var(--background-color);
+
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: var(--font-family);
+  }
+
+  body {
+    height: 100%;
+    color: var(--text-color);
+  }
+
+  p {
+    font-size: 0.875rem;
+    line-height: 1.5rem;
+
+    @include mixins.pc {
+      font-size: 1rem;
+      line-height: 1.75rem;
+    }
+  }
+}
