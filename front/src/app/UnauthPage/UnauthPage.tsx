@@ -26,6 +26,8 @@ import styles from "./UnauthPage.module.scss";
 const { Title } = Typography;
 const { confirm } = Modal;
 
+const API_URL = import.meta.env.VITE_SERVER;
+
 // Tipagens
 interface SecaoResumo {
   nome: string;
@@ -62,7 +64,7 @@ export default function UnauthPage() {
 
   const fetchContents = async () => {
     try {
-      const res = await fetch("http://localhost:8080/api/conteudos");
+      const res = await fetch(`${API_URL}/api/conteudos`);
       const data: Conteudo[] = await res.json();
 
       const secoesMap: Record<string, Secao> = {};
@@ -78,9 +80,7 @@ export default function UnauthPage() {
         secoesMap[secaoNome].itens.push(item);
       });
 
-      setSecoes(
-        Object.values(secoesMap).sort((a, b) => a.ordem - b.ordem)
-      );
+      setSecoes(Object.values(secoesMap).sort((a, b) => a.ordem - b.ordem));
     } catch (err) {
       message.error("Erro ao carregar conteúdos");
       console.error(err);
@@ -127,13 +127,13 @@ export default function UnauthPage() {
       }
 
       if (editingConteudo?._id) {
-        await fetch(
-          `http://localhost:8080/api/conteudos/${editingConteudo._id}`,
-          { method: "PUT", body: formData }
-        );
+        await fetch(`${API_URL}/api/conteudos/${editingConteudo._id}`, {
+          method: "PUT",
+          body: formData,
+        });
         message.success("Conteúdo atualizado!");
       } else {
-        await fetch("http://localhost:8080/api/conteudos", {
+        await fetch(`${API_URL}/api/conteudos`, {
           method: "POST",
           body: formData,
         });
@@ -155,7 +155,7 @@ export default function UnauthPage() {
       cancelText: "Não",
       onOk: async () => {
         try {
-          await fetch(`http://localhost:8080/api/conteudos/${id}`, {
+          await fetch(`${API_URL}/api/conteudos/${id}`, {
             method: "DELETE",
           });
           message.success("Conteúdo removido!");
@@ -183,7 +183,7 @@ export default function UnauthPage() {
           ordem: index,
         }));
 
-        const res = await fetch("http://localhost:8080/api/secoes/order", {
+        const res = await fetch(`${API_URL}/api/secoes/order`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ secoes: secoesParaAtualizar }),
@@ -220,7 +220,7 @@ export default function UnauthPage() {
         secaoNome: secaoAtual.nome,
       }));
 
-      const res = await fetch("http://localhost:8080/api/conteudos/order", {
+      const res = await fetch(`${API_URL}/api/conteudos/order`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ itens: itensParaAtualizar }),
@@ -254,13 +254,20 @@ export default function UnauthPage() {
 
   return (
     <div className={`${styles.container} ${styles.background}`}>
-
       <DragDropContext onDragEnd={onDragEnd}>
-        <Droppable droppableId="secoes-droppable" direction="vertical" type="SECAO">
+        <Droppable
+          droppableId="secoes-droppable"
+          direction="vertical"
+          type="SECAO"
+        >
           {(provided) => (
             <div ref={provided.innerRef} {...provided.droppableProps}>
               {secoes.map((secao, index) => (
-                <Draggable key={secao.nome} draggableId={secao.nome} index={index}>
+                <Draggable
+                  key={secao.nome}
+                  draggableId={secao.nome}
+                  index={index}
+                >
                   {(provided) => (
                     <section
                       ref={provided.innerRef}
@@ -270,7 +277,10 @@ export default function UnauthPage() {
                     >
                       <Title level={2}>{secao.nome}</Title>
 
-                      <Droppable droppableId={secao.nome} direction="horizontal">
+                      <Droppable
+                        droppableId={secao.nome}
+                        direction="horizontal"
+                      >
                         {(provided) => (
                           <div
                             className={styles.cardsRow}
@@ -278,7 +288,11 @@ export default function UnauthPage() {
                             {...provided.droppableProps}
                           >
                             {secao.itens.map((conteudo, index) => (
-                              <Draggable key={conteudo._id} draggableId={conteudo._id} index={index}>
+                              <Draggable
+                                key={conteudo._id}
+                                draggableId={conteudo._id}
+                                index={index}
+                              >
                                 {(provided) => (
                                   <Card
                                     ref={provided.innerRef}
@@ -289,15 +303,21 @@ export default function UnauthPage() {
                                       <img
                                         alt={conteudo.nome}
                                         src={conteudo.imagem}
-                                        onClick={() => openPreview(conteudo.imagem)}
+                                        onClick={() =>
+                                          openPreview(conteudo.imagem)
+                                        }
                                       />
                                     }
                                     actions={[
                                       <EditOutlined
-                                        onClick={() => openFormModal(undefined, conteudo)}
+                                        onClick={() =>
+                                          openFormModal(undefined, conteudo)
+                                        }
                                       />,
                                       <DeleteOutlined
-                                        onClick={() => handleDelete(conteudo._id)}
+                                        onClick={() =>
+                                          handleDelete(conteudo._id)
+                                        }
                                       />,
                                     ]}
                                   >
