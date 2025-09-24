@@ -1,181 +1,394 @@
 import { useEffect, useState } from "react";
-import { Button, Col, Row, Typography, Card, Spin, Modal } from "antd";
+import {
+  Typography,
+  Card,
+  Modal,
+  message,
+  Form,
+  Input,
+  Upload,
+  Button,
+} from "antd";
+import {
+  PlusOutlined,
+  EditOutlined,
+  DeleteOutlined,
+  UploadOutlined,
+} from "@ant-design/icons";
+import {
+  DragDropContext,
+  Droppable,
+  Draggable,
+  DropResult,
+} from "react-beautiful-dnd";
 import styles from "./UnauthPage.module.scss";
 
-const { Title, Paragraph } = Typography;
+const { Title } = Typography;
+const { confirm } = Modal;
+
+// Tipagens
+interface SecaoResumo {
+  nome: string;
+  ordem: number;
+}
 
 interface Conteudo {
   _id: string;
   nome: string;
   descricao: string;
   imagem: string;
+  secao: SecaoResumo;
+  ordem: number;
 }
 
-function UnauthPage() {
-  const [conteudos, setConteudos] = useState<Conteudo[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [modalImage, setModalImage] = useState("");
+interface Secao {
+  nome: string;
+  ordem: number;
+  itens: Conteudo[];
+}
+
+export default function UnauthPage() {
+  const [secoes, setSecoes] = useState<Secao[]>([]);
+  const [previewVisible, setPreviewVisible] = useState(false);
+  const [previewImage, setPreviewImage] = useState("");
+  const [modalFormVisible, setModalFormVisible] = useState(false);
+  const [editingConteudo, setEditingConteudo] = useState<Conteudo | null>(null);
+  const [form] = Form.useForm();
+  const [fileList, setFileList] = useState<any[]>([]);
 
   useEffect(() => {
-    fetch("http://localhost:8080/api/conteudos")
-      .then(res => res.json())
-      .then(data => {
-        setConteudos(data);
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error("Erro ao carregar conteúdos:", err);
-        setLoading(false);
-      });
+    fetchContents();
   }, []);
 
-  const habilidades = [
-    { nome: "C#", img: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/csharp.svg" },
-    { nome: "HTML", img: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/html5.svg" },
-    { nome: "CSS", img: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/css3.svg" },
-    { nome: "JavaScript", img: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/javascript.svg" },
-    { nome: "SQL", img: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/mysql.svg" },
-  ];
+  const fetchContents = async () => {
+    try {
+      const res = await fetch("http://localhost:8080/api/conteudos");
+      const data: Conteudo[] = await res.json();
 
-  const iconSize = 70;
+      const secoesMap: Record<string, Secao> = {};
+      data.forEach((item) => {
+        const secaoNome = item.secao?.nome || "Sem nome";
+        if (!secoesMap[secaoNome]) {
+          secoesMap[secaoNome] = {
+            nome: secaoNome,
+            ordem: item.secao?.ordem || 0,
+            itens: [],
+          };
+        }
+        secoesMap[secaoNome].itens.push(item);
+      });
 
-  const openModal = (img: string) => {
-    setModalImage(img);
-    setModalVisible(true);
+      setSecoes(
+        Object.values(secoesMap).sort((a, b) => a.ordem - b.ordem)
+      );
+    } catch (err) {
+      message.error("Erro ao carregar conteúdos");
+      console.error(err);
+    }
   };
 
-  const renderCards = (filterNames: string[] | ((c: Conteudo) => boolean)) =>
-    loading ? (
-      <Spin tip="Carregando..." />
-    ) : (
-      <div className={styles.cardsRow}>
-        {conteudos
-          .filter(c =>
-            typeof filterNames === "function"
-              ? filterNames(c)
-              : filterNames.includes(c.nome.toLowerCase())
-          )
-          .map(conteudo => (
-            <div className={styles.cardWrapper} key={conteudo._id}>
-              <div className={styles.cardImage} onClick={() => openModal(conteudo.imagem)}>
-                <img src={conteudo.imagem} alt={conteudo.nome} />
-              </div>
-              <Card bordered={false} bodyStyle={{ padding: "1rem" }}>
-                <Card.Meta title={conteudo.nome} description={conteudo.descricao} />
-              </Card>
-            </div>
-          ))}
-      </div>
-    );
+  const openPreview = (img: string) => {
+    setPreviewImage(img);
+    setPreviewVisible(true);
+  };
+
+  const openFormModal = (secaoNome?: string, conteudo?: Conteudo) => {
+    setEditingConteudo(conteudo || null);
+    setModalFormVisible(true);
+    form.resetFields();
+    setFileList([]);
+
+    if (conteudo) {
+      const { nome, descricao, imagem, secao } = conteudo;
+      form.setFieldsValue({
+        nome,
+        descricao,
+        secao: secao?.nome || "",
+      });
+      setFileList([{ url: imagem, name: "imagem.png" }]);
+    } else if (secaoNome) {
+      form.setFieldsValue({
+        nome: "",
+        descricao: "",
+        secao: secaoNome,
+      });
+    }
+  };
+
+  const handleFormSubmit = async (values: any) => {
+    try {
+      const formData = new FormData();
+      formData.append("nome", values.nome);
+      formData.append("descricao", values.descricao);
+      formData.append("secao", values.secao);
+
+      if (fileList.length > 0 && fileList[0].originFileObj) {
+        formData.append("imagem", fileList[0].originFileObj);
+      }
+
+      if (editingConteudo?._id) {
+        await fetch(
+          `http://localhost:8080/api/conteudos/${editingConteudo._id}`,
+          { method: "PUT", body: formData }
+        );
+        message.success("Conteúdo atualizado!");
+      } else {
+        await fetch("http://localhost:8080/api/conteudos", {
+          method: "POST",
+          body: formData,
+        });
+        message.success("Conteúdo criado!");
+      }
+
+      setModalFormVisible(false);
+      fetchContents();
+    } catch (err) {
+      message.error("Erro ao salvar conteúdo.");
+      console.error(err);
+    }
+  };
+
+  const handleDelete = (id: string) => {
+    confirm({
+      title: "Tem certeza que deseja excluir este conteúdo?",
+      okText: "Sim",
+      cancelText: "Não",
+      onOk: async () => {
+        try {
+          await fetch(`http://localhost:8080/api/conteudos/${id}`, {
+            method: "DELETE",
+          });
+          message.success("Conteúdo removido!");
+          fetchContents();
+        } catch (err) {
+          message.error("Erro ao deletar conteúdo.");
+        }
+      },
+    });
+  };
+
+  const onDragEnd = async (result: DropResult) => {
+    const { source, destination, type } = result;
+    if (!destination) return;
+
+    if (type === "SECAO") {
+      const newSecoes = Array.from(secoes);
+      const [moved] = newSecoes.splice(source.index, 1);
+      newSecoes.splice(destination.index, 0, moved);
+      setSecoes(newSecoes);
+
+      try {
+        const secoesParaAtualizar = newSecoes.map((secao, index) => ({
+          nome: secao.nome,
+          ordem: index,
+        }));
+
+        const res = await fetch("http://localhost:8080/api/secoes/order", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ secoes: secoesParaAtualizar }),
+        });
+
+        if (!res.ok) throw new Error("Falha ao atualizar ordem das seções");
+        message.success("Ordem das seções atualizada!");
+      } catch (err) {
+        console.error(err);
+        message.error("Erro ao atualizar ordem das seções no backend.");
+      }
+      return;
+    }
+
+    if (source.droppableId !== destination.droppableId) return;
+
+    const newSecoes = secoes.map((secao) => {
+      if (secao.nome !== source.droppableId) return secao;
+      const itens = Array.from(secao.itens);
+      const [moved] = itens.splice(source.index, 1);
+      itens.splice(destination.index, 0, moved);
+      return { ...secao, itens };
+    });
+
+    setSecoes(newSecoes);
+
+    try {
+      const secaoAtual = newSecoes.find((s) => s.nome === source.droppableId);
+      if (!secaoAtual) return;
+
+      const itensParaAtualizar = secaoAtual.itens.map((item, index) => ({
+        id: item._id,
+        ordem: index,
+        secaoNome: secaoAtual.nome,
+      }));
+
+      const res = await fetch("http://localhost:8080/api/conteudos/order", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ itens: itensParaAtualizar }),
+      });
+
+      if (!res.ok) throw new Error("Falha ao atualizar ordem no backend");
+      message.success("Ordem de conteúdos atualizada!");
+    } catch (err) {
+      console.error(err);
+      message.error("Erro ao atualizar ordem no backend.");
+    }
+  };
+
+  // Função para transformar links em <a>
+  const linkify = (text: string) => {
+    if (!text) return null;
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const parts = text.split(urlRegex);
+
+    return parts.map((part, i) => {
+      if (urlRegex.test(part)) {
+        return (
+          <a key={i} href={part} target="_blank" rel="noopener noreferrer">
+            {part}
+          </a>
+        );
+      }
+      return part;
+    });
+  };
 
   return (
-    <div className={styles.container}>
-      {/* HERO */}
-      <section className={styles.hero}>
-        <Title level={1}>Olá, eu sou Lucas Ferreira 👋</Title>
-        <Paragraph>
-          Desenvolvedor focado em <strong>React, Node.js e QA</strong>. Apaixonado por tecnologia, games e resolver problemas com código.
-        </Paragraph>
-        <Paragraph>
-          Nasci em Itapetininga, estudei Edificações e hoje curso <strong>Análise e Desenvolvimento de Sistemas na FATEC</strong>. Já atuei na equipe de suporte de TI do grupo Abrão Reze e atualmente desenvolvo meu TCC: um jogo educativo para pessoas com TDAH.
-        </Paragraph>
-        <Button type="primary" size="large" href="#projetos">Ver meus projetos</Button>
-      </section>
+    <div className={`${styles.container} ${styles.background}`}>
 
-      {/* HABILIDADES */}
-      <section id="habilidades" className={styles.skills}>
-        <Title level={2}>Habilidades</Title>
-        <Row gutter={[16, 16]}>
-          {habilidades.map(skill => (
-            <Col key={skill.nome}>
-              <img src={skill.img} alt={skill.nome} width={iconSize} height={iconSize} />
-            </Col>
-          ))}
-        </Row>
-      </section>
+      <DragDropContext onDragEnd={onDragEnd}>
+        <Droppable droppableId="secoes-droppable" direction="vertical" type="SECAO">
+          {(provided) => (
+            <div ref={provided.innerRef} {...provided.droppableProps}>
+              {secoes.map((secao, index) => (
+                <Draggable key={secao.nome} draggableId={secao.nome} index={index}>
+                  {(provided) => (
+                    <section
+                      ref={provided.innerRef}
+                      {...provided.draggableProps}
+                      {...provided.dragHandleProps}
+                      className={styles.section}
+                    >
+                      <Title level={2}>{secao.nome}</Title>
 
-      {/* PROJETOS */}
-      <section id="projetos" className={styles.projects}>
-        <Title level={2}>Projetos</Title>
-        {renderCards(["fatec", "ifsp","cubo magico"])}
-      </section>
+                      <Droppable droppableId={secao.nome} direction="horizontal">
+                        {(provided) => (
+                          <div
+                            className={styles.cardsRow}
+                            ref={provided.innerRef}
+                            {...provided.droppableProps}
+                          >
+                            {secao.itens.map((conteudo, index) => (
+                              <Draggable key={conteudo._id} draggableId={conteudo._id} index={index}>
+                                {(provided) => (
+                                  <Card
+                                    ref={provided.innerRef}
+                                    {...provided.draggableProps}
+                                    {...provided.dragHandleProps}
+                                    hoverable
+                                    cover={
+                                      <img
+                                        alt={conteudo.nome}
+                                        src={conteudo.imagem}
+                                        onClick={() => openPreview(conteudo.imagem)}
+                                      />
+                                    }
+                                    actions={[
+                                      <EditOutlined
+                                        onClick={() => openFormModal(undefined, conteudo)}
+                                      />,
+                                      <DeleteOutlined
+                                        onClick={() => handleDelete(conteudo._id)}
+                                      />,
+                                    ]}
+                                  >
+                                    <Card.Meta
+                                      title={conteudo.nome}
+                                      description={linkify(conteudo.descricao)}
+                                    />
+                                  </Card>
+                                )}
+                              </Draggable>
+                            ))}
 
-      {/* CURSOS E CERTIFICADOS */}
-      <section id="cursos" className={styles.courses}>
-        <Title level={2}>Cursos e Certificados</Title>
-        {renderCards(c => c.nome.toLowerCase().includes("certificado") || c.nome.toLowerCase().includes("curso"))}
-      </section>
+                            <Card
+                              className={styles.addCard}
+                              onClick={() => openFormModal(secao.nome)}
+                            >
+                              <PlusOutlined />
+                              <div>Adicionar Conteúdo</div>
+                            </Card>
 
-      {/* MAIS SOBRE MIM */}
-      <section id="extras" className={styles.extras}>
-        <Title level={2}>Mais sobre mim</Title>
-        {renderCards(["desenho", "abrao reze", "lucas ferreira", "guitarra"])}
-      </section>
+                            {provided.placeholder}
+                          </div>
+                        )}
+                      </Droppable>
+                    </section>
+                  )}
+                </Draggable>
+              ))}
+              {provided.placeholder}
+            </div>
+          )}
+        </Droppable>
+      </DragDropContext>
 
-      {/* CONTATO */}
-      <section id="contato" className={styles.contact}>
-        <Title level={2}>Contato</Title>
-        <Row gutter={[16, 16]} align="middle">
-          <Col>
-            <a href="https://github.com/LucasFerreiraSouza" target="_blank" rel="noreferrer">
-              <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/github.svg" alt="GitHub" width={30} />
-            </a>
-          </Col>
-          <Col>
-            <a href="https://www.linkedin.com/in/lucas-ferreira-de-souza-758195215/" target="_blank" rel="noreferrer">
-              <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/linkedin.svg" alt="LinkedIn" width={30} />
-            </a>
-          </Col>
-          <Col>
-            <a href="mailto:lucasferreirasouza22@gmail.com">
-              <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/gmail.svg" alt="Email" width={30} />
-            </a>
-          </Col>
-          <Col>
-            <a href="https://wa.me/5515997651019" target="_blank" rel="noreferrer">
-              <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/whatsapp.svg" alt="WhatsApp" width={30} />
-            </a>
-          </Col>
-          <Col>
-            <a href="https://www.instagram.com/lucaox/" target="_blank" rel="noreferrer">
-              <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/instagram.svg" alt="Instagram" width={30} />
-            </a>
-          </Col>
-        </Row>
-      </section>
-
-      {/* MODAL DE PREVIEW */}
       <Modal
-        visible={modalVisible}
+        open={previewVisible}
         footer={null}
-        onCancel={() => setModalVisible(false)}
+        onCancel={() => setPreviewVisible(false)}
         centered
-        width="100%"
-        bodyStyle={{ padding: 0, backgroundColor: "#ffffffff", height: "100vh" }}
-        style={{ top: 0 }}
-        maskStyle={{ backgroundColor: "rgba(255, 255, 255, 0.85)" }}
       >
-        <div style={{
-          width: "100%",
-          height: "100%",
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-        }}>
-          <img
-            src={modalImage}
-            alt="Preview"
-            style={{
-              maxWidth: "100%",
-              maxHeight: "100%",
-              objectFit: "contain"
-            }}
-          />
-        </div>
+        <img
+          src={previewImage}
+          alt="Preview"
+          style={{ maxWidth: "100%", maxHeight: "100%" }}
+        />
+      </Modal>
+
+      <Modal
+        open={modalFormVisible}
+        title={editingConteudo ? "Editar Conteúdo" : "Adicionar Conteúdo"}
+        onCancel={() => setModalFormVisible(false)}
+        onOk={() => form.submit()}
+        okText="Salvar"
+      >
+        <Form form={form} layout="vertical" onFinish={handleFormSubmit}>
+          <Form.Item
+            name="nome"
+            label="Nome do Conteúdo"
+            rules={[{ required: true, message: "Digite o nome" }]}
+          >
+            <Input />
+          </Form.Item>
+
+          <Form.Item
+            name="descricao"
+            label="Descrição do Conteúdo"
+            rules={[{ required: true, message: "Digite a descrição" }]}
+          >
+            <Input.TextArea rows={3} />
+          </Form.Item>
+
+          <Form.Item
+            name="secao"
+            label="Seção"
+            rules={[{ required: true, message: "Digite o nome da seção" }]}
+          >
+            <Input />
+          </Form.Item>
+
+          <Form.Item label="Imagem">
+            <Upload
+              beforeUpload={() => false}
+              fileList={fileList}
+              onChange={({ fileList }) => setFileList(fileList)}
+              listType="picture"
+            >
+              <Button icon={<UploadOutlined />}>Selecionar arquivo</Button>
+            </Upload>
+          </Form.Item>
+        </Form>
       </Modal>
     </div>
   );
 }
-
-export default UnauthPage;

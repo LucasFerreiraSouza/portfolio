@@ -52,7 +52,7 @@ app.get('/proxy-image', async (req, res) => {
 const conteudoRoutes = require("./app/routes/conteudo.routes");
 app.use("/api", conteudoRoutes);
 
-// === Inicia servidor local (não necessário no Vercel) ===
+// === Inicia servidor local (não necessário no Vercel)
 if (process.env.NODE_ENV !== 'production') {
   app.listen(PORT, () => {
     console.log(`Servidor rodando na porta ${PORT}`);

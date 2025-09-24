@@ -1,13 +1,27 @@
 const mongoose = require("mongoose");
 
-// ======================= SCHEMA =======================
-const ConteudoSchema = new mongoose.Schema({
-  nome: { type: String, required: true },
-  descricao: { type: String, required: true },
-  imagem: { type: String, required: true }, // base64 ou URL do PNG
-}, { timestamps: true });
+// Subdocumento da seção (não terá _id próprio, só dados embutidos)
+const SecaoSchema = new mongoose.Schema(
+  {
+    nome: { type: String, required: true },
+    ordem: { type: Number, default: 0 },
+  },
+  { _id: false }
+);
 
-// ======================= MODELO =======================
-const Conteudo = mongoose.model("Conteudo", ConteudoSchema, "conteudos");
+const ConteudoSchema = new mongoose.Schema(
+  {
+    nome: { type: String, required: true },
+    descricao: { type: String, required: true },
+    imagem: { type: String, required: true },
+    publicId: { type: String, required: true }, // necessário para deletar no Cloudinary
 
-module.exports = Conteudo;
+    // seção embutida
+    secao: { type: SecaoSchema, required: true },
+
+    ordem: { type: Number, default: 0 }, // usado no drag & drop dos conteúdos
+  },
+  { timestamps: true }
+);
+
+module.exports = mongoose.model("Conteudo", ConteudoSchema);

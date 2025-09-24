@@ -1,26 +1,6 @@
-/* Container principal */
-.container {
-  width: 100%;
-  padding: 2rem;
-  font-family: 'Roboto', sans-serif;
-  display: flex;
-  flex-direction: column;
-  align-items: center;  // centraliza horizontalmente todos os elementos
-}
-
-/* HERO com Kanagawa de fundo */
-.hero {
-  position: relative;
-  overflow: hidden;
-  text-align: center;
-  padding: 6rem 2rem;
-  color: #1e3a8a;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  max-width: 1200px;
+.background {
+  position: relative; // necessário para o ::before
+  z-index: 0;         // garante que o conteúdo fique acima
 
   &::before {
     content: "";
@@ -32,138 +12,100 @@
     background-image: url("https://res.cloudinary.com/drcuskkcw/image/upload/v1758497314/portfolio/1758497268675_Kanagawa.png");
     background-size: cover;
     background-position: center;
-    opacity: 0.1;
-    z-index: -1;
-  }
-
-  h1, p {
-    width: 100%;
-    max-width: 800px;
-  }
-
-  h1 { font-size: 3rem; font-weight: 900; margin-bottom: 1rem; }
-  p { font-size: 1.2rem; line-height: 1.6; margin-bottom: 1rem; }
-  .ant-btn-primary { background-color: #ef4444; border: none; }
-
-  @media (max-width: 768px) {
-    h1 { font-size: 2.2rem; }
-    p  { font-size: 1rem; }
-    padding: 4rem 1rem;
-  }
-
-  @media (max-width: 480px) {
-    h1 { font-size: 1.8rem; }
-    p  { font-size: 0.9rem; }
-    padding: 3rem 1rem;
+    background-repeat: no-repeat;
+    opacity: 0.05;   // ajusta a opacidade da imagem
+    z-index: -1;    // envia para trás do conteúdo
   }
 }
 
-/* Carrossel / linha de cards */
-.cardsRow {
+
+.container {
+  width: 100%;
+  padding: 2rem;
   display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+}
+
+.section {
+  width: 100%;
+  margin-bottom: 2rem;
+  padding: 1rem;
+  background-color: #f5f5f5; // cor da seção
+  border-radius: 1rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.cardsRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); // preenche toda a largura
   gap: 16px;
-  padding: 1rem 0;
   width: 100%;
 }
 
-/* Cada card */
-.cardWrapper {
+.addCard, .ant-card {
+  width: 100%;       // ocupa toda a célula do grid
+  height: 250px;     // mesmo tamanho para todos os cards
   display: flex;
   flex-direction: column;
-  width: auto;       // largura baseada no conteúdo
-  height: auto;      // altura baseada no conteúdo
-  min-width: 300px;  // largura mínima
-  max-width: 100%;   // nunca ultrapassa o container
-  box-sizing: border-box;
+  align-items: center;
+  justify-content: flex-start;
+  text-align: center;
+  border-radius: 1rem;
+  overflow: hidden;
 }
 
-/* Imagem do card */
-.cardImage {
-  width: 100%;       // ocupa toda largura do card
-  height: 250px;     // altura fixa para manter proporção
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  overflow: hidden;
-  background-color: #f5f5f5;
-  border-radius: 1rem;
+.addCard {
+  border: 1px dashed #d9d9d9;
   cursor: pointer;
+  background-color: #ffffff;
+  transition: background 0.2s;
+
+  &:hover {
+    border-color: #1890ff;
+    background-color: #f0f5ff;
+  }
+
+  svg {
+    font-size: 30px;
+    margin-top: 1rem;
+  }
+
+  div {
+    margin-top: 8px;
+  }
+}
+
+.ant-card {
+  cursor: grab;
+  &:active {
+    cursor: grabbing;
+  }
 
   img {
     width: 100%;
-    height: 100%;
-    object-fit: cover;
-    transition: transform 0.3s;
-    &:hover { transform: scale(1.05); }
+    height: 150px;        // altura fixa da imagem
+    object-fit: cover;    // garante crop centralizado e uniforme
+    border-radius: 0.5rem 0.5rem 0 0;
   }
 }
 
-.cardWrapper .ant-card-body {
-  padding: 1rem;
-  width: 100%;
-  box-sizing: border-box;
+.ant-card-meta-title {
+  font-weight: 600;
+  margin-top: 8px;
 }
 
-/* Habilidades */
-.skills {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  width: 100%;
+.ant-card-meta-description {
+  font-size: 0.9rem;
+  color: #555;
 
-  img { 
-    border-radius: 50%; 
-    padding: 0.5rem; 
-    background: #ffffffaa; 
-    transition: transform 0.3s;
-    &:hover { transform: scale(1.2); }
-  }
-}
-
-/* Contato */
-.contact {
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 16px;
-
-  img { 
-    transition: transform 0.3s; 
-    &:hover { transform: scale(1.2); } 
-  }
-}
-
-/* Modal full-screen */
-.fullscreenModal {
-  top: 0 !important;
-  width: 100% !important;
-  max-width: 100% !important;
-  height: 100vh !important;
-
-  .ant-modal-content {
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0,0,0,0.9);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 0;
-  }
-
-  .ant-modal-body {
-    padding: 0;
-    width: 100%;
-    height: 100%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-
-    img {
-      max-width: 100%;
-      max-height: 100%;
-      object-fit: contain;
+  a {
+    color: #1890ff;           // cor azul do Ant Design
+    text-decoration: underline;
+    word-break: break-word;    // quebra links longos
+    &:hover {
+      color: #40a9ff;
     }
   }
 }
