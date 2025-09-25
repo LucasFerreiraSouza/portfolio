@@ -1,13 +1,20 @@
 import { useState, useEffect } from "react";
 import { Form, Input, Button, message, Modal, Card, Typography } from "antd";
 import axios from "axios";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Path } from "../../routes/constants";
 
 const { Title } = Typography;
 
+interface Usuario {
+  _id: string;
+  nome: string;
+  email: string;
+  tipoPerfil: string;
+}
+
 interface Props {
-  onLoginSuccess?: (token: string) => void;
+  onLoginSuccess?: (token: string, usuario: Usuario) => void;
 }
 
 interface Conteudo {
@@ -32,52 +39,77 @@ const ConteudoVisitante: React.FC<Props> = ({ onLoginSuccess }) => {
   const [previewVisible, setPreviewVisible] = useState(false);
   const [previewImage, setPreviewImage] = useState("");
   const navigate = useNavigate();
+  const location = useLocation();
   const API_BASE = import.meta.env.VITE_SERVER;
+
+  // Aplica token salvo no axios
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    const userStr = localStorage.getItem("user");
+    if (token) {
+      axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+      if (userStr && onLoginSuccess) {
+        const usuario: Usuario = JSON.parse(userStr);
+        onLoginSuccess(token, usuario);
+      }
+    }
+  }, []);
 
   const openModal = () => setIsModalVisible(true);
   const closeModal = () => setIsModalVisible(false);
 
-  // Buscar conteúdos do Lucas Ferreira
+  const getUsernameFromUrl = (): string => {
+    const searchParams = new URLSearchParams(location.search);
+    let usuario = searchParams.get("user");
+    if (!usuario && location.search.startsWith("?")) {
+      usuario = location.search.replace("?", "");
+    }
+    return usuario || "lucas_ferreira";
+  };
+
   const fetchConteudos = async () => {
+    const usuario = getUsernameFromUrl();
     try {
-      const res = await axios.get(`${API_BASE}/api/usuarios/lucas_ferreira/conteudos`);
+      const res = await axios.get(`${API_BASE}/api/usuarios/${usuario}/conteudos`);
       setConteudos(res.data);
     } catch (err) {
       console.error(err);
-      message.error("Erro ao carregar portfólio do Lucas Ferreira.");
+      message.error(`Erro ao carregar portfólio de ${usuario}.`);
     }
   };
 
   useEffect(() => {
     fetchConteudos();
-  }, []);
+  }, [location.search]);
 
   const handleLogin = async (values: any) => {
-  setLoading(true);
-  try {
-    const res = await axios.post(`${API_BASE}/api/usuarios/authenticate`, values);
-    message.success("Login realizado com sucesso!");
+    setLoading(true);
+    try {
+      const res = await axios.post(`${API_BASE}/api/usuarios/authenticate`, values);
+      message.success("Login realizado com sucesso!");
 
-    localStorage.setItem("token", res.data.token);
-    localStorage.setItem("user", JSON.stringify(res.data.usuario));
+      const { token, usuario } = res.data as { token: string; usuario: Usuario };
 
-    if (onLoginSuccess) onLoginSuccess(res.data.token);
+      localStorage.setItem("token", token);
+      localStorage.setItem("user", JSON.stringify(usuario));
+      axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
 
-    closeModal();
+      if (onLoginSuccess) onLoginSuccess(token, usuario);
 
-    // Navega de acordo com o perfil
-    if (res.data.usuario.tipoPerfil === "admin") {
-      navigate("/admin");
-    } else {
-      navigate(Path.usuario);
+      closeModal();
+
+      // Navegação imediata sem setTimeout
+      if (usuario.tipoPerfil === "admin") {
+        navigate("/admin", { replace: true });
+      } else {
+        navigate(Path.usuario, { replace: true });
+      }
+    } catch (err: any) {
+      message.error(err?.response?.data?.error || "Erro ao fazer login.");
+    } finally {
+      setLoading(false);
     }
-  } catch (err: any) {
-    message.error(err?.response?.data?.error || "Erro ao fazer login.");
-  } finally {
-    setLoading(false);
-  }
-};
-
+  };
 
   const handleRegister = async (values: any) => {
     setLoading(true);
@@ -118,13 +150,7 @@ const ConteudoVisitante: React.FC<Props> = ({ onLoginSuccess }) => {
         Login / Registro
       </Button>
 
-      {/* Modal de Login / Registro */}
-      <Modal
-        title={mode === "login" ? "Login" : "Registrar"}
-        open={isModalVisible}
-        onCancel={closeModal}
-        footer={null}
-      >
+      <Modal title={mode === "login" ? "Login" : "Registrar"} open={isModalVisible} onCancel={closeModal} footer={null}>
         {mode === "login" ? (
           <Form layout="vertical" onFinish={handleLogin}>
             <Form.Item label="E-mail" name="email" rules={[{ required: true, message: "Informe seu e-mail" }]}>
@@ -170,48 +196,51 @@ const ConteudoVisitante: React.FC<Props> = ({ onLoginSuccess }) => {
         )}
       </Modal>
 
-      {/* Portfólio do Lucas Ferreira */}
       {conteudos.map((secao, index) => {
         const secaoNome = secao.itens.length > 0 ? secao.itens[0].secao : `Seção ${secao.ordem + 1}`;
         return (
           <section key={index} style={{ marginBottom: 32, padding: 16, borderRadius: 8, backgroundColor: "#f5f5f5" }}>
-              <Title level={3} style={{ textAlign: "center", marginBottom: 16 }}>
-                {secaoNome}
-              </Title>
-              
-              <div style={{
+            <Title level={3} style={{ textAlign: "center", marginBottom: 16 }}>
+              {secaoNome}
+            </Title>
+
+            <div
+              style={{
                 display: "flex",
                 gap: 16,
                 overflowX: "auto",
                 paddingBottom: 8,
                 flexWrap: "wrap",
-                justifyContent: "center"
-              }}>
-                {secao.itens.map((item) => (
-                  <Card
-                    key={item._id}
-                    hoverable
-                    style={{ minWidth: 200, flex: "1 0 200px", maxWidth: 300 }}
-                    cover={
-                      <img
-                        alt={item.nome}
-                        src={item.imagem}
-                        onClick={() => openPreview(item.imagem)}
-                        style={{ width: "100%", height: 150, objectFit: "cover", borderRadius: "0.5rem 0.5rem 0 0" }}
-                      />
-                    }
-                  >
-                    <Card.Meta title={item.nome} description={linkify(item.descricao)} />
-                  </Card>
-                ))}
-
-
-              </div>
-            </section>
+                justifyContent: "center",
+              }}
+            >
+              {secao.itens.map((item) => (
+                <Card
+                  key={item._id}
+                  hoverable
+                  style={{ minWidth: 200, flex: "1 0 200px", maxWidth: 300 }}
+                  cover={
+                    <img
+                      alt={item.nome}
+                      src={item.imagem}
+                      onClick={() => openPreview(item.imagem)}
+                      style={{
+                        width: "100%",
+                        height: 150,
+                        objectFit: "cover",
+                        borderRadius: "0.5rem 0.5rem 0 0",
+                      }}
+                    />
+                  }
+                >
+                  <Card.Meta title={item.nome} description={linkify(item.descricao)} />
+                </Card>
+              ))}
+            </div>
+          </section>
         );
       })}
 
-      {/* Modal de preview de imagem */}
       <Modal open={previewVisible} footer={null} onCancel={() => setPreviewVisible(false)} centered>
         <img src={previewImage} alt="Preview" style={{ maxWidth: "100%", maxHeight: "100%" }} />
       </Modal>

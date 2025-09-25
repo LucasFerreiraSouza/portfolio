@@ -1,46 +1,48 @@
+import { useState, useCallback } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { Path } from "./constants";
 
-// Componentes
-import ConteudoVisitante from "../app/conteudoVisitante/conteudoVisitante"; // visitante
-import ConteudoUsuario from "../app/conteudoUsuario/conteudoUsuario"; // usuário logado
-import AdminPage from "../app/admin/admin"; // admin (default export)
+import ConteudoVisitante from "../app/conteudoVisitante/conteudoVisitante";
+import ConteudoUsuario from "../app/conteudoUsuario/conteudoUsuario";
+import AdminPage from "../app/admin/admin";
 
-// --- Helpers ---
-const isLoggedIn = () => !!localStorage.getItem("token");
-
-const isAdmin = () => {
-  const user = localStorage.getItem("user");
-  if (!user) return false;
-  try {
-    const parsed = JSON.parse(user);
-    return parsed.tipoPerfil === "admin";
-  } catch {
-    return false;
-  }
-};
-
-// --- Rotas ---
 function RootRoutes() {
+  const [user, setUser] = useState(() => {
+    const stored = localStorage.getItem("user");
+    return stored ? JSON.parse(stored) : null;
+  });
+
+  const [,setToken] = useState(() => localStorage.getItem("token"));
+
+  const isLoggedIn = !!user;
+  const isAdmin = user?.tipoPerfil === "admin";
+
+  // Memoriza a função para evitar re-render desnecessário
+  const handleLoginSuccess = useCallback((token: string, usuario: any) => {
+    setToken(token);
+    setUser(usuario);
+  }, []);
+
   return (
     <Routes>
-      {/* Página pública para visitantes */}
-      <Route path="/" element={<ConteudoVisitante />} />
-      <Route path="/portfolio/:username" element={<ConteudoVisitante />} />
-
-      {/* Página de usuário logado */}
       <Route
-        path={Path.usuario} // exemplo: "/usuario"
-        element={isLoggedIn() ? <ConteudoUsuario /> : <Navigate to="/" />}
+        path="/"
+        element={<ConteudoVisitante onLoginSuccess={handleLoginSuccess} />}
+      />
+      <Route
+        path="/portfolio/:username"
+        element={<ConteudoVisitante onLoginSuccess={handleLoginSuccess} />}
       />
 
-      {/* Página de admin */}
+      <Route
+        path={Path.usuario}
+        element={isLoggedIn ? <ConteudoUsuario /> : <Navigate to="/" />}
+      />
       <Route
         path="/admin"
-        element={isAdmin() ? <AdminPage /> : <Navigate to="/" />}
+        element={isAdmin ? <AdminPage /> : <Navigate to="/" />}
       />
 
-      {/* Redirecionar qualquer rota desconhecida para visitante */}
       <Route path="*" element={<Navigate to="/" />} />
     </Routes>
   );

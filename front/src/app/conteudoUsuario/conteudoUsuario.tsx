@@ -292,7 +292,18 @@ export default function AuthContentPage() {
   };
 
   return (
+    
     <div className={`${styles.container} ${styles.background}`}>
+      
+      <Button
+        type="primary"
+        danger
+        onClick={handleLogout}
+        style={{ marginBottom: 16, float: "right" }}
+      >
+        Logout
+      </Button>
+      
       <DragDropContext onDragEnd={onDragEnd}>
         <Droppable droppableId="secoes-droppable" direction="vertical" type="SECAO">
           {(provided) => (
@@ -407,15 +418,6 @@ export default function AuthContentPage() {
           </Form.Item>
         </Form>
       </Modal>
-
-      <Button
-        type="primary"
-        danger
-        onClick={handleLogout}
-        style={{ marginBottom: 16, float: "right" }}
-      >
-        Logout
-      </Button>
     </div>
   );
 }
