@@ -20,6 +20,11 @@ const ConteudoSchema = new mongoose.Schema(
     secao: { type: SecaoSchema, required: true },
 
     ordem: { type: Number, default: 0 }, // usado no drag & drop dos conteúdos
+
+    // usuário que criou o conteúdo
+    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "Usuario", required: true },
+    createdByUsername: String, // novo campo para rota pública
+
   },
   { timestamps: true }
 );

@@ -21,14 +21,14 @@ import {
   Draggable,
   DropResult,
 } from "react-beautiful-dnd";
-import styles from "./UnauthPage.module.scss";
+import { useNavigate } from "react-router-dom";
+import styles from "./conteudoUsuario.module.scss";
 
 const { Title } = Typography;
 const { confirm } = Modal;
 
 const API_URL = import.meta.env.VITE_SERVER;
 
-// Tipagens
 interface SecaoResumo {
   nome: string;
   ordem: number;
@@ -49,7 +49,8 @@ interface Secao {
   itens: Conteudo[];
 }
 
-export default function UnauthPage() {
+export default function AuthContentPage() {
+  const token = localStorage.getItem("token"); // JWT do login
   const [secoes, setSecoes] = useState<Secao[]>([]);
   const [previewVisible, setPreviewVisible] = useState(false);
   const [previewImage, setPreviewImage] = useState("");
@@ -57,14 +58,42 @@ export default function UnauthPage() {
   const [editingConteudo, setEditingConteudo] = useState<Conteudo | null>(null);
   const [form] = Form.useForm();
   const [fileList, setFileList] = useState<any[]>([]);
+  const navigate = useNavigate();
+
+  // Função para logout
+  const handleLogout = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/usuarios/logout`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!res.ok) throw new Error("Erro ao fazer logout");
+
+      localStorage.removeItem("token");
+      message.success("Logout realizado com sucesso!");
+      navigate("/login");
+    } catch (err) {
+      console.error(err);
+      message.error("Falha ao fazer logout.");
+    }
+  };
 
   useEffect(() => {
+    if (!token) {
+      message.error("Você precisa estar logado!");
+      navigate("/login");
+      return;
+    }
     fetchContents();
   }, []);
 
   const fetchContents = async () => {
     try {
-      const res = await fetch(`${API_URL}/api/conteudos`);
+      const res = await fetch(`${API_URL}/api/conteudos`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error("Erro ao buscar conteúdos");
       const data: Conteudo[] = await res.json();
 
       const secoesMap: Record<string, Secao> = {};
@@ -107,11 +136,7 @@ export default function UnauthPage() {
       });
       setFileList([{ url: imagem, name: "imagem.png" }]);
     } else if (secaoNome) {
-      form.setFieldsValue({
-        nome: "",
-        descricao: "",
-        secao: secaoNome,
-      });
+      form.setFieldsValue({ nome: "", descricao: "", secao: secaoNome });
     }
   };
 
@@ -120,30 +145,37 @@ export default function UnauthPage() {
       const formData = new FormData();
       formData.append("nome", values.nome);
       formData.append("descricao", values.descricao);
+      // Envia apenas o nome da seção
       formData.append("secao", values.secao);
 
       if (fileList.length > 0 && fileList[0].originFileObj) {
         formData.append("imagem", fileList[0].originFileObj);
       }
 
-      if (editingConteudo?._id) {
-        await fetch(`${API_URL}/api/conteudos/${editingConteudo._id}`, {
-          method: "PUT",
-          body: formData,
-        });
-        message.success("Conteúdo atualizado!");
-      } else {
-        await fetch(`${API_URL}/api/conteudos`, {
-          method: "POST",
-          body: formData,
-        });
-        message.success("Conteúdo criado!");
+      const url = editingConteudo
+        ? `${API_URL}/api/conteudos/${editingConteudo._id}`
+        : `${API_URL}/api/conteudos`;
+
+      const method = editingConteudo ? "PUT" : "POST";
+
+      const res = await fetch(url, {
+        method,
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.message || "Erro ao salvar conteúdo");
       }
 
+      message.success(editingConteudo ? "Conteúdo atualizado!" : "Conteúdo criado!");
       setModalFormVisible(false);
       fetchContents();
-    } catch (err) {
-      message.error("Erro ao salvar conteúdo.");
+    } catch (err: any) {
+      message.error(err.message || "Erro ao salvar conteúdo.");
       console.error(err);
     }
   };
@@ -155,13 +187,16 @@ export default function UnauthPage() {
       cancelText: "Não",
       onOk: async () => {
         try {
-          await fetch(`${API_URL}/api/conteudos/${id}`, {
+          const res = await fetch(`${API_URL}/api/conteudos/${id}`, {
             method: "DELETE",
+            headers: { Authorization: `Bearer ${token}` },
           });
+          if (!res.ok) throw new Error("Erro ao deletar conteúdo");
           message.success("Conteúdo removido!");
           fetchContents();
         } catch (err) {
           message.error("Erro ao deletar conteúdo.");
+          console.error(err);
         }
       },
     });
@@ -184,8 +219,11 @@ export default function UnauthPage() {
         }));
 
         const res = await fetch(`${API_URL}/api/secoes/order`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
           body: JSON.stringify({ secoes: secoesParaAtualizar }),
         });
 
@@ -198,76 +236,95 @@ export default function UnauthPage() {
       return;
     }
 
-    if (source.droppableId !== destination.droppableId) return;
+    if (type === "CONTEUDO") {
+      if (source.droppableId !== destination.droppableId) return;
 
-    const newSecoes = secoes.map((secao) => {
-      if (secao.nome !== source.droppableId) return secao;
-      const itens = Array.from(secao.itens);
-      const [moved] = itens.splice(source.index, 1);
-      itens.splice(destination.index, 0, moved);
-      return { ...secao, itens };
-    });
-
-    setSecoes(newSecoes);
-
-    try {
-      const secaoAtual = newSecoes.find((s) => s.nome === source.droppableId);
-      if (!secaoAtual) return;
-
-      const itensParaAtualizar = secaoAtual.itens.map((item, index) => ({
-        id: item._id,
-        ordem: index,
-        secaoNome: secaoAtual.nome,
-      }));
-
-      const res = await fetch(`${API_URL}/api/conteudos/order`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ itens: itensParaAtualizar }),
+      const newSecoes = secoes.map((secao) => {
+        if (secao.nome !== source.droppableId) return secao;
+        const itens = Array.from(secao.itens);
+        const [moved] = itens.splice(source.index, 1);
+        itens.splice(destination.index, 0, moved);
+        return { ...secao, itens };
       });
 
-      if (!res.ok) throw new Error("Falha ao atualizar ordem no backend");
-      message.success("Ordem de conteúdos atualizada!");
-    } catch (err) {
-      console.error(err);
-      message.error("Erro ao atualizar ordem no backend.");
+      setSecoes(newSecoes);
+
+      try {
+        const secaoAtual = newSecoes.find((s) => s.nome === source.droppableId);
+        if (!secaoAtual) return;
+
+        const itensParaAtualizar = secaoAtual.itens.map((item, index) => ({
+          id: item._id,
+          ordem: index,
+        }));
+
+        const res = await fetch(`${API_URL}/api/conteudos/order`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ itens: itensParaAtualizar }),
+        });
+
+        if (!res.ok) throw new Error("Falha ao atualizar ordem no backend");
+        message.success("Ordem de conteúdos atualizada!");
+      } catch (err) {
+        console.error(err);
+        message.error("Erro ao atualizar ordem no backend.");
+      }
     }
   };
 
-  // Função para transformar links em <a>
   const linkify = (text: string) => {
     if (!text) return null;
     const urlRegex = /(https?:\/\/[^\s]+)/g;
     const parts = text.split(urlRegex);
-
-    return parts.map((part, i) => {
-      if (urlRegex.test(part)) {
-        return (
-          <a key={i} href={part} target="_blank" rel="noopener noreferrer">
-            {part}
-          </a>
-        );
-      }
-      return part;
-    });
+    return parts.map((part, i) =>
+      urlRegex.test(part) ? (
+        <a key={i} href={part} target="_blank" rel="noopener noreferrer">
+          {part}
+        </a>
+      ) : (
+        part
+      )
+    );
   };
 
   return (
+    
     <div className={`${styles.container} ${styles.background}`}>
+      
+      <Button
+        type="primary"
+        danger
+        onClick={handleLogout}
+        style={{ marginBottom: 16, float: "right" }}
+      >
+        Logout
+      </Button>
+      
       <DragDropContext onDragEnd={onDragEnd}>
-        <Droppable
-          droppableId="secoes-droppable"
-          direction="vertical"
-          type="SECAO"
-        >
+        <Droppable droppableId="secoes-droppable" direction="vertical" type="SECAO">
           {(provided) => (
             <div ref={provided.innerRef} {...provided.droppableProps}>
+              {secoes.length === 0 && (
+                <div className={styles.noSections}>
+                  Nenhuma seção encontrada. Clique no botão abaixo para criar uma.
+                </div>
+              )}
+
+              <Button
+                type="dashed"
+                icon={<PlusOutlined />}
+                onClick={() => openFormModal()}
+                style={{ marginBottom: 16 }}
+              >
+                Criar Conteúdo
+              </Button>
+
               {secoes.map((secao, index) => (
-                <Draggable
-                  key={secao.nome}
-                  draggableId={secao.nome}
-                  index={index}
-                >
+                <Draggable key={secao.nome} draggableId={secao.nome} index={index}>
                   {(provided) => (
                     <section
                       ref={provided.innerRef}
@@ -277,22 +334,11 @@ export default function UnauthPage() {
                     >
                       <Title level={2}>{secao.nome}</Title>
 
-                      <Droppable
-                        droppableId={secao.nome}
-                        direction="horizontal"
-                      >
+                      <Droppable droppableId={secao.nome} direction="horizontal" type="CONTEUDO">
                         {(provided) => (
-                          <div
-                            className={styles.cardsRow}
-                            ref={provided.innerRef}
-                            {...provided.droppableProps}
-                          >
+                          <div className={styles.cardsRow} ref={provided.innerRef} {...provided.droppableProps}>
                             {secao.itens.map((conteudo, index) => (
-                              <Draggable
-                                key={conteudo._id}
-                                draggableId={conteudo._id}
-                                index={index}
-                              >
+                              <Draggable key={conteudo._id} draggableId={conteudo._id} index={index}>
                                 {(provided) => (
                                   <Card
                                     ref={provided.innerRef}
@@ -302,38 +348,22 @@ export default function UnauthPage() {
                                     cover={
                                       <img
                                         alt={conteudo.nome}
-                                        src={conteudo.imagem}
-                                        onClick={() =>
-                                          openPreview(conteudo.imagem)
-                                        }
+                                        src={conteudo.imagem || "https://via.placeholder.com/150"}
+                                        onClick={() => openPreview(conteudo.imagem || "https://via.placeholder.com/150")}
                                       />
                                     }
                                     actions={[
-                                      <EditOutlined
-                                        onClick={() =>
-                                          openFormModal(undefined, conteudo)
-                                        }
-                                      />,
-                                      <DeleteOutlined
-                                        onClick={() =>
-                                          handleDelete(conteudo._id)
-                                        }
-                                      />,
+                                      <EditOutlined onClick={() => openFormModal(undefined, conteudo)} />,
+                                      <DeleteOutlined onClick={() => handleDelete(conteudo._id)} />,
                                     ]}
                                   >
-                                    <Card.Meta
-                                      title={conteudo.nome}
-                                      description={linkify(conteudo.descricao)}
-                                    />
+                                    <Card.Meta title={conteudo.nome} description={linkify(conteudo.descricao)} />
                                   </Card>
                                 )}
                               </Draggable>
                             ))}
 
-                            <Card
-                              className={styles.addCard}
-                              onClick={() => openFormModal(secao.nome)}
-                            >
+                            <Card className={styles.addCard} onClick={() => openFormModal(secao.nome)}>
                               <PlusOutlined />
                               <div>Adicionar Conteúdo</div>
                             </Card>
@@ -352,17 +382,8 @@ export default function UnauthPage() {
         </Droppable>
       </DragDropContext>
 
-      <Modal
-        open={previewVisible}
-        footer={null}
-        onCancel={() => setPreviewVisible(false)}
-        centered
-      >
-        <img
-          src={previewImage}
-          alt="Preview"
-          style={{ maxWidth: "100%", maxHeight: "100%" }}
-        />
+      <Modal open={previewVisible} footer={null} onCancel={() => setPreviewVisible(false)} centered>
+        <img src={previewImage} alt="Preview" style={{ maxWidth: "100%", maxHeight: "100%" }} />
       </Modal>
 
       <Modal
@@ -373,27 +394,15 @@ export default function UnauthPage() {
         okText="Salvar"
       >
         <Form form={form} layout="vertical" onFinish={handleFormSubmit}>
-          <Form.Item
-            name="nome"
-            label="Nome do Conteúdo"
-            rules={[{ required: true, message: "Digite o nome" }]}
-          >
+          <Form.Item name="nome" label="Nome do Conteúdo" rules={[{ required: true, message: "Digite o nome" }]}>
             <Input />
           </Form.Item>
 
-          <Form.Item
-            name="descricao"
-            label="Descrição do Conteúdo"
-            rules={[{ required: true, message: "Digite a descrição" }]}
-          >
+          <Form.Item name="descricao" label="Descrição do Conteúdo" rules={[{ required: true, message: "Digite a descrição" }]}>
             <Input.TextArea rows={3} />
           </Form.Item>
 
-          <Form.Item
-            name="secao"
-            label="Seção"
-            rules={[{ required: true, message: "Digite o nome da seção" }]}
-          >
+          <Form.Item name="secao" label="Seção" rules={[{ required: true, message: "Digite o nome da seção" }]}>
             <Input />
           </Form.Item>
 

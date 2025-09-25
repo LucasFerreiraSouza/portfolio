@@ -2,24 +2,50 @@ const express = require("express");
 const router = express.Router();
 const controller = require("../controllers/conteudo.controller");
 
-// Upload middleware
-const upload = controller.upload;
+// ===================
+// ROTAS DE CONTEÚDO
+// ===================
 
-// Atualizar ordem dos conteúdos dentro da mesma seção
-router.put("/conteudos/order", controller.updateOrder);
+// Criar conteúdo (upload de imagem obrigatório)
+router.post(
+  "/conteudos",
+  controller.checkToken,
+  controller.upload.single("imagem"),
+  controller.create
+);
 
-// Atualizar ordem das seções
-router.put("/secoes/order", controller.updateSectionOrder);
+// Listar todos os conteúdos do usuário logado
+router.get("/conteudos", controller.checkToken, controller.list);
+
+// Listar conteúdos agrupados por seção
+router.get("/conteudos/agrupados", controller.checkToken, controller.listBySecao);
+
+// Buscar conteúdo por ID
+router.get("/conteudos/:id", controller.checkToken, controller.findOne);
+
+// Atualizar conteúdo (opcionalmente atualizar imagem)
+router.put(
+  "/conteudos/:id",
+  controller.checkToken,
+  controller.upload.single("imagem"),
+  controller.update
+);
+
+// Deletar conteúdo
+router.delete("/conteudos/:id", controller.checkToken, controller.remove);
+
+// ===================
+// ROTAS DE ORDEM
+// ===================
+
+// Atualizar ordem de conteúdos
+router.patch("/conteudos/order", controller.checkToken, controller.updateOrder);
+
+// Atualizar ordem de seções
+router.patch("/secoes/order", controller.checkToken, controller.updateSectionOrder);
 
 // Atualizar nome ou descrição de uma seção
-router.put("/secoes/:nome", controller.updateSection);
+router.put("/secoes/:nome", controller.checkToken, controller.updateSection);
 
-// CRUD de conteúdos
-router.post("/conteudos", upload.single("imagem"), controller.create);
-router.get("/conteudos", controller.list);
-router.get("/conteudos/agrupados", controller.listBySecao);
-router.get("/conteudos/:id", controller.findOne);
-router.put("/conteudos/:id", upload.single("imagem"), controller.update);
-router.delete("/conteudos/:id", controller.remove);
 
 module.exports = router;
