@@ -276,40 +276,4 @@ exports.updateSection = async (req, res) => {
 };
 
 
-// ===================
-// LIST CONTENTS FOR VISITANTE
-// ===================
-exports.listPublic = async (req, res) => {
-  try {
-    await connectDB();
-    const { username } = req.params; // nome de usuário passado na URL
 
-    if (!username) return res.status(400).json({ message: "Nome de usuário obrigatório." });
-
-    // Buscar conteúdos do usuário pelo campo createdBy -> você precisa armazenar username no usuário
-    const conteudos = await Conteudo.find({ createdByUsername: username }).lean();
-
-    if (!conteudos.length) return res.status(404).json({ message: "Portfólio não encontrado." });
-
-    // Agrupar por seção
-    const agrupados = conteudos
-      .sort((a, b) => a.secao.ordem - b.secao.ordem || a.ordem - b.ordem)
-      .reduce((acc, item) => {
-        const secaoNome = item.secao.nome;
-        if (!acc[secaoNome]) acc[secaoNome] = { ordem: item.secao.ordem, itens: [] };
-        acc[secaoNome].itens.push({
-          _id: item._id,
-          nome: item.nome,
-          descricao: item.descricao,
-          imagem: item.imagem,
-          secao: item.secao.nome,
-          ordem: item.ordem
-        });
-        return acc;
-      }, {});
-
-    res.json(Object.values(agrupados));
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-};

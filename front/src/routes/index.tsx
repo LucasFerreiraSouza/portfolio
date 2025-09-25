@@ -1,10 +1,10 @@
-import { Route, Routes, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import { Path } from "./constants";
 
 // Componentes
 import ConteudoVisitante from "../app/conteudoVisitante/conteudoVisitante"; // visitante
 import ConteudoUsuario from "../app/conteudoUsuario/conteudoUsuario"; // usuário logado
-import Admin from "../app/admin/admin"; // admin
+import AdminPage from "../app/admin/admin"; // admin (default export)
 
 // --- Helpers ---
 const isLoggedIn = () => !!localStorage.getItem("token");
@@ -30,14 +30,14 @@ function RootRoutes() {
 
       {/* Página de usuário logado */}
       <Route
-        path={Path.usuario} // crie Path.usuario = "/usuario"
+        path={Path.usuario} // exemplo: "/usuario"
         element={isLoggedIn() ? <ConteudoUsuario /> : <Navigate to="/" />}
       />
 
       {/* Página de admin */}
       <Route
         path="/admin"
-        element={isAdmin() ? <Admin /> : <Navigate to="/" />}
+        element={isAdmin() ? <AdminPage /> : <Navigate to="/" />}
       />
 
       {/* Redirecionar qualquer rota desconhecida para visitante */}

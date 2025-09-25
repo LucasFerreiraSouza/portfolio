@@ -50,6 +50,7 @@ interface Secao {
 }
 
 export default function AuthContentPage() {
+  const token = localStorage.getItem("token"); // JWT do login
   const [secoes, setSecoes] = useState<Secao[]>([]);
   const [previewVisible, setPreviewVisible] = useState(false);
   const [previewImage, setPreviewImage] = useState("");
@@ -59,28 +60,24 @@ export default function AuthContentPage() {
   const [fileList, setFileList] = useState<any[]>([]);
   const navigate = useNavigate();
 
- // Função para logout
-const handleLogout = async () => {
-  try {
-    const res = await fetch(`${API_URL}/api/usuarios/logout`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
-    });
+  // Função para logout
+  const handleLogout = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/usuarios/logout`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-    if (!res.ok) throw new Error("Erro ao fazer logout");
+      if (!res.ok) throw new Error("Erro ao fazer logout");
 
-    localStorage.removeItem("token"); // Remove token
-    message.success("Logout realizado com sucesso!");
-    navigate("/login"); // Redireciona para login
-  } catch (err) {
-    console.error(err);
-    message.error("Falha ao fazer logout.");
-  }
-};
-
-
-
-  const token = localStorage.getItem("token"); // JWT do login
+      localStorage.removeItem("token");
+      message.success("Logout realizado com sucesso!");
+      navigate("/login");
+    } catch (err) {
+      console.error(err);
+      message.error("Falha ao fazer logout.");
+    }
+  };
 
   useEffect(() => {
     if (!token) {
@@ -144,47 +141,44 @@ const handleLogout = async () => {
   };
 
   const handleFormSubmit = async (values: any) => {
-  try {
-    const formData = new FormData();
-    formData.append("nome", values.nome);
-    formData.append("descricao", values.descricao);
+    try {
+      const formData = new FormData();
+      formData.append("nome", values.nome);
+      formData.append("descricao", values.descricao);
+      // Envia apenas o nome da seção
+      formData.append("secao", values.secao);
 
-    // Transformando secao em objeto { nome, ordem }
-    const secaoObj = { nome: values.secao, ordem: 0 };
-    formData.append("secao", JSON.stringify(secaoObj));
+      if (fileList.length > 0 && fileList[0].originFileObj) {
+        formData.append("imagem", fileList[0].originFileObj);
+      }
 
-    if (fileList.length > 0 && fileList[0].originFileObj) {
-      formData.append("imagem", fileList[0].originFileObj);
+      const url = editingConteudo
+        ? `${API_URL}/api/conteudos/${editingConteudo._id}`
+        : `${API_URL}/api/conteudos`;
+
+      const method = editingConteudo ? "PUT" : "POST";
+
+      const res = await fetch(url, {
+        method,
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.message || "Erro ao salvar conteúdo");
+      }
+
+      message.success(editingConteudo ? "Conteúdo atualizado!" : "Conteúdo criado!");
+      setModalFormVisible(false);
+      fetchContents();
+    } catch (err: any) {
+      message.error(err.message || "Erro ao salvar conteúdo.");
+      console.error(err);
     }
-
-    const url = editingConteudo
-      ? `${API_URL}/api/conteudos/${editingConteudo._id}`
-      : `${API_URL}/api/conteudos`;
-
-    const method = editingConteudo ? "PUT" : "POST";
-
-    const res = await fetch(url, {
-      method,
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      body: formData,
-    });
-
-    if (!res.ok) {
-      const errData = await res.json();
-      throw new Error(errData.message || "Erro ao salvar conteúdo");
-    }
-
-    message.success(editingConteudo ? "Conteúdo atualizado!" : "Conteúdo criado!");
-    setModalFormVisible(false);
-    fetchContents();
-  } catch (err: any) {
-    message.error(err.message || "Erro ao salvar conteúdo.");
-    console.error(err);
-  }
-};
-
+  };
 
   const handleDelete = (id: string) => {
     confirm({
@@ -209,84 +203,78 @@ const handleLogout = async () => {
   };
 
   const onDragEnd = async (result: DropResult) => {
-  const { source, destination, type } = result;
-  if (!destination) return;
+    const { source, destination, type } = result;
+    if (!destination) return;
 
-  // --- Drag de seções (vertical) ---
-  if (type === "SECAO") {
-    const newSecoes = Array.from(secoes);
-    const [moved] = newSecoes.splice(source.index, 1);
-    newSecoes.splice(destination.index, 0, moved);
-    setSecoes(newSecoes);
+    if (type === "SECAO") {
+      const newSecoes = Array.from(secoes);
+      const [moved] = newSecoes.splice(source.index, 1);
+      newSecoes.splice(destination.index, 0, moved);
+      setSecoes(newSecoes);
 
-    try {
-      const secoesParaAtualizar = newSecoes.map((secao, index) => ({
-        nome: secao.nome,
-        ordem: index,
-      }));
+      try {
+        const secoesParaAtualizar = newSecoes.map((secao, index) => ({
+          nome: secao.nome,
+          ordem: index,
+        }));
 
-      const res = await fetch(`${API_URL}/api/secoes/order`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ secoes: secoesParaAtualizar }),
+        const res = await fetch(`${API_URL}/api/secoes/order`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ secoes: secoesParaAtualizar }),
+        });
+
+        if (!res.ok) throw new Error("Falha ao atualizar ordem das seções");
+        message.success("Ordem das seções atualizada!");
+      } catch (err) {
+        console.error(err);
+        message.error("Erro ao atualizar ordem das seções no backend.");
+      }
+      return;
+    }
+
+    if (type === "CONTEUDO") {
+      if (source.droppableId !== destination.droppableId) return;
+
+      const newSecoes = secoes.map((secao) => {
+        if (secao.nome !== source.droppableId) return secao;
+        const itens = Array.from(secao.itens);
+        const [moved] = itens.splice(source.index, 1);
+        itens.splice(destination.index, 0, moved);
+        return { ...secao, itens };
       });
 
-      if (!res.ok) throw new Error("Falha ao atualizar ordem das seções");
-      message.success("Ordem das seções atualizada!");
-    } catch (err) {
-      console.error(err);
-      message.error("Erro ao atualizar ordem das seções no backend.");
+      setSecoes(newSecoes);
+
+      try {
+        const secaoAtual = newSecoes.find((s) => s.nome === source.droppableId);
+        if (!secaoAtual) return;
+
+        const itensParaAtualizar = secaoAtual.itens.map((item, index) => ({
+          id: item._id,
+          ordem: index,
+        }));
+
+        const res = await fetch(`${API_URL}/api/conteudos/order`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ itens: itensParaAtualizar }),
+        });
+
+        if (!res.ok) throw new Error("Falha ao atualizar ordem no backend");
+        message.success("Ordem de conteúdos atualizada!");
+      } catch (err) {
+        console.error(err);
+        message.error("Erro ao atualizar ordem no backend.");
+      }
     }
-    return;
-  }
-
-  // --- Drag de conteúdos (horizontal dentro da mesma seção) ---
-  // --- Drag de conteúdos (horizontal) ---
-if (type === "CONTEUDO") {
-  if (source.droppableId !== destination.droppableId) return;
-
-  const newSecoes = secoes.map(secao => {
-    if (secao.nome !== source.droppableId) return secao;
-    const itens = Array.from(secao.itens);
-    const [moved] = itens.splice(source.index, 1);
-    itens.splice(destination.index, 0, moved);
-    return { ...secao, itens };
-  });
-
-  setSecoes(newSecoes);
-
-  try {
-    const secaoAtual = newSecoes.find(s => s.nome === source.droppableId);
-    if (!secaoAtual) return;
-
-    const itensParaAtualizar = secaoAtual.itens.map((item, index) => ({
-      id: item._id,
-      ordem: index,
-      secaoNome: secaoAtual.nome,
-    }));
-
-    const res = await fetch(`${API_URL}/api/conteudos/order`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ itens: itensParaAtualizar }),
-    });
-
-    if (!res.ok) throw new Error("Falha ao atualizar ordem no backend");
-    message.success("Ordem de conteúdos atualizada!");
-  } catch (err) {
-    console.error(err);
-    message.error("Erro ao atualizar ordem no backend.");
-  }
-}
-
-
-  }
+  };
 
   const linkify = (text: string) => {
     if (!text) return null;
@@ -304,128 +292,123 @@ if (type === "CONTEUDO") {
   };
 
   return (
-  <div className={`${styles.container} ${styles.background}`}>
-    <DragDropContext onDragEnd={onDragEnd}>
-      <Droppable droppableId="secoes-droppable" direction="vertical" type="SECAO">
-        {(provided) => (
-          <div ref={provided.innerRef} {...provided.droppableProps}>
+    <div className={`${styles.container} ${styles.background}`}>
+      <DragDropContext onDragEnd={onDragEnd}>
+        <Droppable droppableId="secoes-droppable" direction="vertical" type="SECAO">
+          {(provided) => (
+            <div ref={provided.innerRef} {...provided.droppableProps}>
+              {secoes.length === 0 && (
+                <div className={styles.noSections}>
+                  Nenhuma seção encontrada. Clique no botão abaixo para criar uma.
+                </div>
+              )}
 
-            {/* Mostrar placeholder se não houver seções */}
-            {secoes.length === 0 && (
-              <div className={styles.noSections}>
-                Nenhuma seção encontrada. Clique no botão abaixo para criar uma.
-              </div>
-            )}
+              <Button
+                type="dashed"
+                icon={<PlusOutlined />}
+                onClick={() => openFormModal()}
+                style={{ marginBottom: 16 }}
+              >
+                Criar Conteúdo
+              </Button>
 
-            {/* Sempre ter botão de adicionar conteúdo global */}
-            <Button
-              type="dashed"
-              icon={<PlusOutlined />}
-              onClick={() => openFormModal()}
-              style={{ marginBottom: 16 }}
+              {secoes.map((secao, index) => (
+                <Draggable key={secao.nome} draggableId={secao.nome} index={index}>
+                  {(provided) => (
+                    <section
+                      ref={provided.innerRef}
+                      {...provided.draggableProps}
+                      {...provided.dragHandleProps}
+                      className={styles.section}
+                    >
+                      <Title level={2}>{secao.nome}</Title>
+
+                      <Droppable droppableId={secao.nome} direction="horizontal" type="CONTEUDO">
+                        {(provided) => (
+                          <div className={styles.cardsRow} ref={provided.innerRef} {...provided.droppableProps}>
+                            {secao.itens.map((conteudo, index) => (
+                              <Draggable key={conteudo._id} draggableId={conteudo._id} index={index}>
+                                {(provided) => (
+                                  <Card
+                                    ref={provided.innerRef}
+                                    {...provided.draggableProps}
+                                    {...provided.dragHandleProps}
+                                    hoverable
+                                    cover={
+                                      <img
+                                        alt={conteudo.nome}
+                                        src={conteudo.imagem || "https://via.placeholder.com/150"}
+                                        onClick={() => openPreview(conteudo.imagem || "https://via.placeholder.com/150")}
+                                      />
+                                    }
+                                    actions={[
+                                      <EditOutlined onClick={() => openFormModal(undefined, conteudo)} />,
+                                      <DeleteOutlined onClick={() => handleDelete(conteudo._id)} />,
+                                    ]}
+                                  >
+                                    <Card.Meta title={conteudo.nome} description={linkify(conteudo.descricao)} />
+                                  </Card>
+                                )}
+                              </Draggable>
+                            ))}
+
+                            <Card className={styles.addCard} onClick={() => openFormModal(secao.nome)}>
+                              <PlusOutlined />
+                              <div>Adicionar Conteúdo</div>
+                            </Card>
+
+                            {provided.placeholder}
+                          </div>
+                        )}
+                      </Droppable>
+                    </section>
+                  )}
+                </Draggable>
+              ))}
+              {provided.placeholder}
+            </div>
+          )}
+        </Droppable>
+      </DragDropContext>
+
+      <Modal open={previewVisible} footer={null} onCancel={() => setPreviewVisible(false)} centered>
+        <img src={previewImage} alt="Preview" style={{ maxWidth: "100%", maxHeight: "100%" }} />
+      </Modal>
+
+      <Modal
+        open={modalFormVisible}
+        title={editingConteudo ? "Editar Conteúdo" : "Adicionar Conteúdo"}
+        onCancel={() => setModalFormVisible(false)}
+        onOk={() => form.submit()}
+        okText="Salvar"
+      >
+        <Form form={form} layout="vertical" onFinish={handleFormSubmit}>
+          <Form.Item name="nome" label="Nome do Conteúdo" rules={[{ required: true, message: "Digite o nome" }]}>
+            <Input />
+          </Form.Item>
+
+          <Form.Item name="descricao" label="Descrição do Conteúdo" rules={[{ required: true, message: "Digite a descrição" }]}>
+            <Input.TextArea rows={3} />
+          </Form.Item>
+
+          <Form.Item name="secao" label="Seção" rules={[{ required: true, message: "Digite o nome da seção" }]}>
+            <Input />
+          </Form.Item>
+
+          <Form.Item label="Imagem">
+            <Upload
+              beforeUpload={() => false}
+              fileList={fileList}
+              onChange={({ fileList }) => setFileList(fileList)}
+              listType="picture"
             >
-              Criar Conteúdo
-            </Button>
+              <Button icon={<UploadOutlined />}>Selecionar arquivo</Button>
+            </Upload>
+          </Form.Item>
+        </Form>
+      </Modal>
 
-            {secoes.map((secao, index) => (
-              <Draggable key={secao.nome} draggableId={secao.nome} index={index}>
-                {(provided) => (
-                  <section
-                    ref={provided.innerRef}
-                    {...provided.draggableProps}
-                    {...provided.dragHandleProps}
-                    className={styles.section}
-                  >
-                    <Title level={2}>{secao.nome}</Title>
-
-                    <Droppable droppableId={secao.nome} direction="horizontal" type="CONTEUDO">
-                      {(provided) => (
-                        <div className={styles.cardsRow} ref={provided.innerRef} {...provided.droppableProps}>
-                          {secao.itens.map((conteudo, index) => (
-                            <Draggable key={conteudo._id} draggableId={conteudo._id} index={index}>
-                              {(provided) => (
-                                <Card
-                                  ref={provided.innerRef}
-                                  {...provided.draggableProps}
-                                  {...provided.dragHandleProps}
-                                  hoverable
-                                  cover={
-                                    <img
-                                      alt={conteudo.nome}
-                                      src={conteudo.imagem || "https://via.placeholder.com/150"}
-                                      onClick={() => openPreview(conteudo.imagem || "https://via.placeholder.com/150")}
-                                    />
-                                  }
-                                  actions={[
-                                    <EditOutlined onClick={() => openFormModal(undefined, conteudo)} />,
-                                    <DeleteOutlined onClick={() => handleDelete(conteudo._id)} />,
-                                  ]}
-                                >
-                                  <Card.Meta title={conteudo.nome} description={linkify(conteudo.descricao)} />
-                                </Card>
-                              )}
-                            </Draggable>
-                          ))}
-
-                          {/* Card para adicionar conteúdo na seção */}
-                          <Card className={styles.addCard} onClick={() => openFormModal(secao.nome)}>
-                            <PlusOutlined />
-                            <div>Adicionar Conteúdo</div>
-                          </Card>
-
-                          {provided.placeholder}
-                        </div>
-                      )}
-                    </Droppable>
-                  </section>
-                )}
-              </Draggable>
-            ))}
-            {provided.placeholder}
-          </div>
-        )}
-      </Droppable>
-    </DragDropContext>
-
-    {/* Modal de preview */}
-    <Modal open={previewVisible} footer={null} onCancel={() => setPreviewVisible(false)} centered>
-      <img src={previewImage} alt="Preview" style={{ maxWidth: "100%", maxHeight: "100%" }} />
-    </Modal>
-
-    {/* Modal de formulário */}
-    <Modal
-      open={modalFormVisible}
-      title={editingConteudo ? "Editar Conteúdo" : "Adicionar Conteúdo"}
-      onCancel={() => setModalFormVisible(false)}
-      onOk={() => form.submit()}
-      okText="Salvar"
-    >
-      <Form form={form} layout="vertical" onFinish={handleFormSubmit}>
-        <Form.Item name="nome" label="Nome do Conteúdo" rules={[{ required: true, message: "Digite o nome" }]}>
-          <Input />
-        </Form.Item>
-
-        <Form.Item name="descricao" label="Descrição do Conteúdo" rules={[{ required: true, message: "Digite a descrição" }]}>
-          <Input.TextArea rows={3} />
-        </Form.Item>
-
-        <Form.Item name="secao" label="Seção" rules={[{ required: true, message: "Digite o nome da seção" }]}>
-          <Input />
-        </Form.Item>
-
-        <Form.Item label="Imagem">
-          <Upload
-            beforeUpload={() => false}
-            fileList={fileList}
-            onChange={({ fileList }) => setFileList(fileList)}
-            listType="picture"
-          >
-            <Button icon={<UploadOutlined />}>Selecionar arquivo</Button>
-          </Upload>
-        </Form.Item>
-      </Form>
-    </Modal>
-    <Button
+      <Button
         type="primary"
         danger
         onClick={handleLogout}
@@ -433,10 +416,6 @@ if (type === "CONTEUDO") {
       >
         Logout
       </Button>
-
-  </div>
-);
-// Dentro do seu componente AuthContentPage
-
-
+    </div>
+  );
 }

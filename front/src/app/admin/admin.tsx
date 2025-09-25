@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
-import { Table, Button, Modal, message, Form, Input, Select } from "antd";
-import { EditOutlined, DeleteOutlined, CheckOutlined, CloseOutlined } from "@ant-design/icons";
+import { Table, Button, message, Typography, Spin } from "antd";
+import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import styles from "./admin.module.scss";
 
-const { confirm } = Modal;
-const { Option } = Select;
+const { Title } = Typography;
 
 const API_URL = import.meta.env.VITE_SERVER;
 
@@ -12,170 +12,147 @@ interface Usuario {
   _id: string;
   nome: string;
   email: string;
+  username: string;
   tipoPerfil: string;
   status: string;
+  datePayment?: string;
+  dateExpiration?: string;
 }
 
-export default function AdminUsuarios() {
-  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [editingUsuario, setEditingUsuario] = useState<Usuario | null>(null);
-  const [form] = Form.useForm();
-  const navigate = useNavigate();
-
+export default function AdminPage() {
   const token = localStorage.getItem("token");
+  const navigate = useNavigate();
+  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
+  // Função para logout
+  const handleLogout = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/usuarios/logout`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!res.ok) throw new Error("Erro ao fazer logout");
+
+      localStorage.removeItem("token");
+      message.success("Logout realizado com sucesso!");
+      navigate("/login");
+    } catch (err) {
+      console.error(err);
+      message.error("Falha ao fazer logout.");
+    }
+  };
+
+  const fetchUsuarios = async () => {
     if (!token) {
       message.error("Você precisa estar logado!");
       navigate("/login");
       return;
     }
-    fetchUsuarios();
-  }, []);
 
-  const fetchUsuarios = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const res = await fetch(`${API_URL}/api/admin/usuarios`, {
+      const res = await axios.get(`${API_URL}/api/usuarios`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) throw new Error("Erro ao buscar usuários");
-      const data: Usuario[] = await res.json();
-      setUsuarios(data);
-    } catch (err) {
+
+      if (Array.isArray(res.data)) {
+        setUsuarios(res.data);
+      } else if (Array.isArray(res.data.usuarios)) {
+        setUsuarios(res.data.usuarios);
+      } else {
+        setUsuarios([]);
+        message.warning("Formato de dados inesperado do backend.");
+      }
+    } catch (err: any) {
       console.error(err);
-      message.error("Erro ao carregar usuários");
+      message.error(err.response?.data?.error || "Erro ao carregar usuários.");
+      setUsuarios([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const openFormModal = (usuario?: Usuario) => {
-    setEditingUsuario(usuario || null);
-    setModalVisible(true);
-    form.resetFields();
-    if (usuario) {
-      form.setFieldsValue({ nome: usuario.nome, email: usuario.email, tipoPerfil: usuario.tipoPerfil });
+  useEffect(() => {
+    fetchUsuarios();
+  }, []);
+
+  const handleAprovar = async (id: string) => {
+    try {
+      await axios.patch(
+        `${API_URL}/api/usuarios/${id}/aprovar`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      message.success("Usuário aprovado!");
+      fetchUsuarios();
+    } catch (err: any) {
+      console.error(err);
+      message.error(err.response?.data?.error || "Erro ao aprovar usuário.");
     }
   };
 
-  const handleFormSubmit = async (values: any) => {
+  const handleRejeitar = async (id: string) => {
     try {
-      const url = editingUsuario
-        ? `${API_URL}/api/admin/usuarios/${editingUsuario._id}`
-        : `${API_URL}/api/admin/usuarios`;
-      const method = editingUsuario ? "PUT" : "POST";
-
-      const res = await fetch(url, {
-        method,
-        headers: { 
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}` 
-        },
-        body: JSON.stringify(values),
-      });
-
-      if (!res.ok) throw new Error("Erro ao salvar usuário");
-      message.success(editingUsuario ? "Usuário atualizado!" : "Usuário criado!");
-      setModalVisible(false);
+      await axios.patch(
+        `${API_URL}/api/usuarios/${id}/rejeitar`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      message.success("Usuário rejeitado!");
       fetchUsuarios();
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      message.error("Erro ao salvar usuário");
-    }
-  };
-
-  const handleDelete = (id: string) => {
-    confirm({
-      title: "Deseja realmente deletar este usuário?",
-      okText: "Sim",
-      cancelText: "Não",
-      onOk: async () => {
-        try {
-          const res = await fetch(`${API_URL}/api/admin/usuarios/${id}`, {
-            method: "DELETE",
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          if (!res.ok) throw new Error("Erro ao deletar usuário");
-          message.success("Usuário deletado!");
-          fetchUsuarios();
-        } catch (err) {
-          console.error(err);
-          message.error("Erro ao deletar usuário");
-        }
-      },
-    });
-  };
-
-  const handleStatusChange = async (id: string, approve: boolean) => {
-    try {
-      const res = await fetch(`${API_URL}/api/admin/usuarios/${id}/${approve ? "aprovar" : "rejeitar"}`, {
-        method: "PUT",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error("Erro ao alterar status do usuário");
-      message.success(`Usuário ${approve ? "aprovado" : "rejeitado"}!`);
-      fetchUsuarios();
-    } catch (err) {
-      console.error(err);
-      message.error("Erro ao alterar status do usuário");
+      message.error(err.response?.data?.error || "Erro ao rejeitar usuário.");
     }
   };
 
   const columns = [
-    { title: "Nome", dataIndex: "nome" },
-    { title: "E-mail", dataIndex: "email" },
-    { title: "Perfil", dataIndex: "tipoPerfil" },
-    { title: "Status", dataIndex: "status" },
+    { title: "Nome", dataIndex: "nome", key: "nome" },
+    { title: "Email", dataIndex: "email", key: "email" },
+    { title: "Username", dataIndex: "username", key: "username" },
+    { title: "Perfil", dataIndex: "tipoPerfil", key: "tipoPerfil" },
+    { title: "Status", dataIndex: "status", key: "status" },
     {
       title: "Ações",
+      key: "acoes",
       render: (_: any, record: Usuario) => (
-        <>
-          <Button icon={<EditOutlined />} onClick={() => openFormModal(record)} style={{ marginRight: 8 }} />
-          <Button icon={<DeleteOutlined />} danger onClick={() => handleDelete(record._id)} style={{ marginRight: 8 }} />
+        <div className={styles.actions}>
           {record.status !== "approved" && (
-            <Button icon={<CheckOutlined />} onClick={() => handleStatusChange(record._id, true)} type="primary" style={{ marginRight: 8 }} />
+            <Button type="primary" onClick={() => handleAprovar(record._id)}>
+              Aprovar
+            </Button>
           )}
           {record.status !== "rejected" && (
-            <Button icon={<CloseOutlined />} onClick={() => handleStatusChange(record._id, false)} danger />
+            <Button danger onClick={() => handleRejeitar(record._id)}>
+              Rejeitar
+            </Button>
           )}
-        </>
+        </div>
       ),
     },
   ];
 
   return (
-    <div>
-      <Button type="primary" style={{ marginBottom: 16 }} onClick={() => openFormModal()}>
-        Adicionar Usuário
-      </Button>
+    <div className={styles.container}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+        <Title level={2} style={{ margin: 0 }}>Administração de Usuários</Title>
+        <Button type="primary" danger onClick={handleLogout}>
+          Logout
+        </Button>
+      </div>
 
-      <Table dataSource={usuarios} columns={columns} rowKey="_id" loading={loading} />
-
-      <Modal
-        title={editingUsuario ? "Editar Usuário" : "Adicionar Usuário"}
-        visible={modalVisible}
-        onCancel={() => setModalVisible(false)}
-        onOk={() => form.submit()}
-        okText="Salvar"
-      >
-        <Form form={form} layout="vertical" onFinish={handleFormSubmit}>
-          <Form.Item name="nome" label="Nome" rules={[{ required: true, message: "Digite o nome" }]}>
-            <Input />
-          </Form.Item>
-          <Form.Item name="email" label="E-mail" rules={[{ required: true, message: "Digite o e-mail" }]}>
-            <Input />
-          </Form.Item>
-          <Form.Item name="tipoPerfil" label="Perfil" rules={[{ required: true }]}>
-            <Select>
-              <Option value="user">Usuário</Option>
-              <Option value="admin">Admin</Option>
-            </Select>
-          </Form.Item>
-        </Form>
-      </Modal>
+      {loading ? (
+        <Spin tip="Carregando usuários..." />
+      ) : (
+        <Table<Usuario>
+          dataSource={usuarios}
+          columns={columns}
+          rowKey="_id"
+          pagination={{ pageSize: 5 }}
+        />
+      )}
     </div>
   );
 }

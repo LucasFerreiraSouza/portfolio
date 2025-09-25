@@ -9,6 +9,8 @@ router.post("/authenticate", usuarios.login);
 
 // Rota pública para listar conteúdos pelo username
 router.get("/:username/conteudos", usuarios.listPublicContents);
+router.get("/", authMiddleware.checkToken, authMiddleware.requireAdmin, usuarios.listUsuarios);
+
 
 // --- Login / Logout ---
 router.post("/logout", authMiddleware.checkToken, usuarios.logout);

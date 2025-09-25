@@ -47,11 +47,5 @@ router.patch("/secoes/order", controller.checkToken, controller.updateSectionOrd
 // Atualizar nome ou descrição de uma seção
 router.put("/secoes/:nome", controller.checkToken, controller.updateSection);
 
-// ===================
-// ROTAS PÚBLICAS
-// ===================
-
-// Listar conteúdos públicos de um usuário (visitante)
-router.get("/visitante/:username", controller.listPublic);
 
 module.exports = router;

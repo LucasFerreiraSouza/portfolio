@@ -53,24 +53,31 @@ const ConteudoVisitante: React.FC<Props> = ({ onLoginSuccess }) => {
   }, []);
 
   const handleLogin = async (values: any) => {
-    setLoading(true);
-    try {
-      const res = await axios.post(`${API_BASE}/api/usuarios/authenticate`, values);
-      message.success("Login realizado com sucesso!");
+  setLoading(true);
+  try {
+    const res = await axios.post(`${API_BASE}/api/usuarios/authenticate`, values);
+    message.success("Login realizado com sucesso!");
 
-      localStorage.setItem("token", res.data.token);
-      localStorage.setItem("user", JSON.stringify(res.data.usuario));
+    localStorage.setItem("token", res.data.token);
+    localStorage.setItem("user", JSON.stringify(res.data.usuario));
 
-      if (onLoginSuccess) onLoginSuccess(res.data.token);
+    if (onLoginSuccess) onLoginSuccess(res.data.token);
 
-      closeModal();
+    closeModal();
+
+    // Navega de acordo com o perfil
+    if (res.data.usuario.tipoPerfil === "admin") {
+      navigate("/admin");
+    } else {
       navigate(Path.usuario);
-    } catch (err: any) {
-      message.error(err?.response?.data?.error || "Erro ao fazer login.");
-    } finally {
-      setLoading(false);
     }
-  };
+  } catch (err: any) {
+    message.error(err?.response?.data?.error || "Erro ao fazer login.");
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   const handleRegister = async (values: any) => {
     setLoading(true);
@@ -167,28 +174,40 @@ const ConteudoVisitante: React.FC<Props> = ({ onLoginSuccess }) => {
       {conteudos.map((secao, index) => {
         const secaoNome = secao.itens.length > 0 ? secao.itens[0].secao : `Seção ${secao.ordem + 1}`;
         return (
-          <section key={index} style={{ marginBottom: 32 }}>
-            <Title level={3}>{secaoNome}</Title>
-            <div style={{ display: "flex", gap: 16, overflowX: "auto", paddingBottom: 8 }}>
-              {secao.itens.map((item) => (
-                <Card
-                  key={item._id}
-                  hoverable
-                  style={{ minWidth: 200, flexShrink: 0 }}
-                  cover={
-                    <img
-                      alt={item.nome}
-                      src={item.imagem}
-                      onClick={() => openPreview(item.imagem)}
-                      style={{ width: "100%", height: 150, objectFit: "cover", borderRadius: "0.5rem 0.5rem 0 0" }}
-                    />
-                  }
-                >
-                  <Card.Meta title={item.nome} description={linkify(item.descricao)} />
-                </Card>
-              ))}
-            </div>
-          </section>
+          <section key={index} style={{ marginBottom: 32, padding: 16, borderRadius: 8, backgroundColor: "#f5f5f5" }}>
+              <Title level={3} style={{ textAlign: "center", marginBottom: 16 }}>
+                {secaoNome}
+              </Title>
+              
+              <div style={{
+                display: "flex",
+                gap: 16,
+                overflowX: "auto",
+                paddingBottom: 8,
+                flexWrap: "wrap",
+                justifyContent: "center"
+              }}>
+                {secao.itens.map((item) => (
+                  <Card
+                    key={item._id}
+                    hoverable
+                    style={{ minWidth: 200, flex: "1 0 200px", maxWidth: 300 }}
+                    cover={
+                      <img
+                        alt={item.nome}
+                        src={item.imagem}
+                        onClick={() => openPreview(item.imagem)}
+                        style={{ width: "100%", height: 150, objectFit: "cover", borderRadius: "0.5rem 0.5rem 0 0" }}
+                      />
+                    }
+                  >
+                    <Card.Meta title={item.nome} description={linkify(item.descricao)} />
+                  </Card>
+                ))}
+
+
+              </div>
+            </section>
         );
       })}
 

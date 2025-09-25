@@ -132,6 +132,17 @@ exports.updateProfile = async (req, res) => {
   }
 };
 
+
+// Admin: listar todos os usuários
+exports.listUsuarios = async (req, res) => {
+  try {
+    const usuarios = await Usuario.find().lean();
+    res.json(usuarios);
+  } catch (err) {
+    res.status(500).json({ error: "Erro ao listar usuários." });
+  }
+};
+
 // --- Deletar conta ---
 exports.deleteAccount = async (req, res) => {
   try {
