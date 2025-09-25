@@ -4,6 +4,7 @@ const multer = require("multer");
 const sharp = require("sharp");
 const stream = require("stream");
 const connectDB = require("../config/db.config");
+const { authMiddleware } = require("../utils/auth.middleware");
 
 // Configuração do Cloudinary
 cloudinary.config({
@@ -25,51 +26,59 @@ const uploadToCloudinary = (buffer, publicId, folder = "portfolio") =>
   });
 
 // Multer para upload
-const upload = multer({ storage: multer.memoryStorage() });
+exports.upload = multer({ storage: multer.memoryStorage() });
 
-/* LIST */
-async function list(req, res) {
+// --- Middleware para checar token ---
+exports.checkToken = authMiddleware.checkToken;
+
+// ===================
+// LIST CONTENTS
+// ===================
+exports.list = async (req, res) => {
   try {
     await connectDB();
     const { search, secao } = req.query;
-    let query = {};
+    let query = { createdBy: req.user.id };
     if (search) query.nome = { $regex: search, $options: "i" };
     if (secao) query["secao.nome"] = secao;
 
     const conteudos = await Conteudo.find(query)
       .sort({ "secao.ordem": 1, ordem: 1 })
       .lean();
+
     res.json(conteudos);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
-}
+};
 
-/* FIND ONE */
-async function findOne(req, res) {
+// ===================
+// FIND ONE
+// ===================
+exports.findOne = async (req, res) => {
   try {
     await connectDB();
-    const conteudo = await Conteudo.findById(req.params.id).lean();
+    const conteudo = await Conteudo.findOne({ _id: req.params.id, createdBy: req.user.id }).lean();
     if (!conteudo) return res.status(404).json({ message: "Conteúdo não encontrado." });
     res.json(conteudo);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
-}
+};
 
-/* CREATE */
-async function create(req, res) {
+// ===================
+// CREATE CONTENT
+// ===================
+exports.create = async (req, res) => {
   try {
     await connectDB();
     const { nome, descricao, secao } = req.body;
 
-    if (!nome || !descricao || !secao) {
+    if (!nome || !descricao || !secao)
       return res.status(400).json({ message: "Nome, descrição e seção são obrigatórios." });
-    }
 
-    if (!req.file) {
+    if (!req.file)
       return res.status(400).json({ message: "Imagem obrigatória." });
-    }
 
     const resizedBuffer = await sharp(req.file.buffer)
       .resize({ width: 800, withoutEnlargement: true })
@@ -79,8 +88,7 @@ async function create(req, res) {
     const publicId = `${Date.now()}_${nome.replace(/\s+/g, "_")}`;
     const uploadResult = await uploadToCloudinary(resizedBuffer, publicId, "portfolio");
 
-    // Define a ordem dentro da seção
-    const lastConteudo = await Conteudo.findOne({ "secao.nome": secao }).sort({ ordem: -1 });
+    const lastConteudo = await Conteudo.findOne({ "secao.nome": secao, createdBy: req.user.id }).sort({ ordem: -1 });
     const nextOrder = lastConteudo ? lastConteudo.ordem + 1 : 0;
 
     const conteudo = await Conteudo.create({
@@ -88,35 +96,37 @@ async function create(req, res) {
       descricao,
       imagem: uploadResult.secure_url,
       publicId: uploadResult.public_id,
-      secao: { nome: secao, ordem: 0 }, // <-- usa o nome da seção do form
+      secao: { nome: secao, ordem: 0 },
       ordem: nextOrder,
+      createdBy: req.user.id,
+      createdByUsername: req.user.username, // pegando do token do usuário
     });
 
     res.status(201).json(conteudo);
   } catch (err) {
-    console.error(err);
     res.status(400).json({ message: err.message });
   }
-}
+};
 
-/* UPDATE */
-async function update(req, res) {
+// ===================
+// UPDATE CONTENT
+// ===================
+exports.update = async (req, res) => {
   try {
     await connectDB();
     const { id } = req.params;
     const { nome, descricao, secao } = req.body;
 
-    if (!nome || !descricao || !secao) {
+    if (!nome || !descricao || !secao)
       return res.status(400).json({ message: "Nome, descrição e seção são obrigatórios." });
-    }
 
-    const conteudoExistente = await Conteudo.findById(id);
+    const conteudoExistente = await Conteudo.findOne({ _id: id, createdBy: req.user.id });
     if (!conteudoExistente) return res.status(404).json({ message: "Conteúdo não encontrado." });
 
     let updateData = {
       nome,
       descricao,
-      secao: { nome: secao, ordem: conteudoExistente.secao.ordem }, // mantém a ordem antiga
+      secao: { nome: secao, ordem: conteudoExistente.secao.ordem },
     };
 
     if (req.file) {
@@ -141,16 +151,17 @@ async function update(req, res) {
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
-}
+};
 
-
-/* DELETE */
-async function remove(req, res) {
+// ===================
+// DELETE CONTENT
+// ===================
+exports.remove = async (req, res) => {
   try {
     await connectDB();
     const { id } = req.params;
 
-    const conteudo = await Conteudo.findById(id);
+    const conteudo = await Conteudo.findOne({ _id: id, createdBy: req.user.id });
     if (!conteudo) return res.status(404).json({ message: "Conteúdo não encontrado." });
 
     if (conteudo.publicId) {
@@ -162,13 +173,15 @@ async function remove(req, res) {
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
-}
+};
 
-/* LIST BY SECTION */
-async function listBySecao(req, res) {
+// ===================
+// LIST BY SECTION
+// ===================
+exports.listBySecao = async (req, res) => {
   try {
     await connectDB();
-    const conteudos = await Conteudo.find().lean();
+    const conteudos = await Conteudo.find({ createdBy: req.user.id }).lean();
 
     const agrupados = conteudos
       .sort((a, b) => a.secao.ordem - b.secao.ordem || a.ordem - b.ordem)
@@ -190,21 +203,22 @@ async function listBySecao(req, res) {
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
-}
+};
 
-/* UPDATE CONTENT ORDER */
-async function updateOrder(req, res) {
+// ===================
+// UPDATE ORDER
+// ===================
+
+exports.updateOrder = async (req, res) => {
   try {
-    await connectDB();
-    const { itens } = req.body; 
-    // itens: [{ id, ordem, secaoNome }]
+    const { itens } = req.body; // [{ id, ordem }]
+    if (!itens || !Array.isArray(itens)) return res.status(400).json({ message: "Itens inválidos" });
 
-    // Garantindo que só mova dentro da mesma seção
     const bulkOps = itens.map(item => ({
       updateOne: {
-        filter: { _id: item.id, "secao.nome": item.secaoNome },
-        update: { ordem: item.ordem }
-      }
+        filter: { _id: item.id },
+        update: { $set: { ordem: item.ordem } },
+      },
     }));
 
     await Conteudo.bulkWrite(bulkOps);
@@ -212,16 +226,20 @@ async function updateOrder(req, res) {
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
-}
+};
 
-/* UPDATE SECTION ORDER */
-async function updateSectionOrder(req, res) {
+
+// ===================
+// UPDATE SECTION ORDER
+// ===================
+exports.updateSectionOrder = async (req, res) => {
   try {
     await connectDB();
-    const { secoes } = req.body; // [{ nome, ordem }]
+    const { secoes } = req.body;
+
     const bulkOps = secoes.map(sec => ({
       updateMany: {
-        filter: { "secao.nome": sec.nome },
+        filter: { "secao.nome": sec.nome, createdBy: req.user.id },
         update: { "secao.ordem": sec.ordem }
       }
     }));
@@ -231,45 +249,67 @@ async function updateSectionOrder(req, res) {
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
-}
+};
 
-
-/* UPDATE SECTION NAME / DESCRIPTION */
-async function updateSection(req, res) {
+// ===================
+// UPDATE SECTION NAME / DESCRIPTION
+// ===================
+exports.updateSection = async (req, res) => {
   try {
     await connectDB();
-    const { nome } = req.params; // nome antigo
-    const { novoNome, descricao } = req.body; // campos a atualizar
+    const { nome } = req.params;
+    const { novoNome, descricao } = req.body;
 
     if (!novoNome && !descricao) {
       return res.status(400).json({ message: "Informe novoNome ou descricao" });
     }
 
-    // Atualiza todos os conteúdos que pertencem a essa seção
     const updateData = {};
     if (novoNome) updateData["secao.nome"] = novoNome;
     if (descricao) updateData.descricao = descricao;
 
-    await Conteudo.updateMany({ "secao.nome": nome }, updateData);
-
+    await Conteudo.updateMany({ "secao.nome": nome, createdBy: req.user.id }, updateData);
     res.json({ message: "Seção atualizada com sucesso!" });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
-}
+};
 
 
+// ===================
+// LIST CONTENTS FOR VISITANTE
+// ===================
+exports.listPublic = async (req, res) => {
+  try {
+    await connectDB();
+    const { username } = req.params; // nome de usuário passado na URL
 
+    if (!username) return res.status(400).json({ message: "Nome de usuário obrigatório." });
 
-module.exports = {
-  upload,
-  create,
-  list,
-  listBySecao,
-  findOne,
-  update,
-  remove,
-  updateOrder,
-  updateSectionOrder,
-  updateSection
+    // Buscar conteúdos do usuário pelo campo createdBy -> você precisa armazenar username no usuário
+    const conteudos = await Conteudo.find({ createdByUsername: username }).lean();
+
+    if (!conteudos.length) return res.status(404).json({ message: "Portfólio não encontrado." });
+
+    // Agrupar por seção
+    const agrupados = conteudos
+      .sort((a, b) => a.secao.ordem - b.secao.ordem || a.ordem - b.ordem)
+      .reduce((acc, item) => {
+        const secaoNome = item.secao.nome;
+        if (!acc[secaoNome]) acc[secaoNome] = { ordem: item.secao.ordem, itens: [] };
+        acc[secaoNome].itens.push({
+          _id: item._id,
+          nome: item.nome,
+          descricao: item.descricao,
+          imagem: item.imagem,
+          secao: item.secao.nome,
+          ordem: item.ordem
+        });
+        return acc;
+      }, {});
+
+    res.json(Object.values(agrupados));
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 };
