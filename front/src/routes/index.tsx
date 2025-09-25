@@ -2,7 +2,7 @@ import { Route, Routes, Navigate } from "react-router-dom";
 import { Path } from "./constants";
 
 // Componentes
-import ConteudoVisitante from "../app/conteudoVisitante/conteudoVisitante"; // visitantes
+import ConteudoVisitante from "../app/conteudoVisitante/conteudoVisitante"; // visitante
 import ConteudoUsuario from "../app/conteudoUsuario/conteudoUsuario"; // usuário logado
 import Admin from "../app/admin/admin"; // admin
 
