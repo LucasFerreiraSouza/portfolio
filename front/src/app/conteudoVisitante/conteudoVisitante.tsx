@@ -42,7 +42,6 @@ const ConteudoVisitante: React.FC<Props> = ({ onLoginSuccess }) => {
   const location = useLocation();
   const API_BASE = import.meta.env.VITE_SERVER;
 
-  // Aplica token salvo no axios
   useEffect(() => {
     const token = localStorage.getItem("token");
     const userStr = localStorage.getItem("user");
@@ -89,16 +88,12 @@ const ConteudoVisitante: React.FC<Props> = ({ onLoginSuccess }) => {
       message.success("Login realizado com sucesso!");
 
       const { token, usuario } = res.data as { token: string; usuario: Usuario };
-
       localStorage.setItem("token", token);
       localStorage.setItem("user", JSON.stringify(usuario));
       axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-
       if (onLoginSuccess) onLoginSuccess(token, usuario);
-
       closeModal();
 
-      // Navegação imediata sem setTimeout
       if (usuario.tipoPerfil === "admin") {
         navigate("/admin", { replace: true });
       } else {
@@ -156,11 +151,9 @@ const ConteudoVisitante: React.FC<Props> = ({ onLoginSuccess }) => {
             <Form.Item label="E-mail" name="email" rules={[{ required: true, message: "Informe seu e-mail" }]}>
               <Input type="email" />
             </Form.Item>
-
             <Form.Item label="Senha" name="senha" rules={[{ required: true, message: "Informe sua senha" }]}>
               <Input.Password />
             </Form.Item>
-
             <Form.Item>
               <Button type="primary" htmlType="submit" loading={loading}>
                 Entrar
@@ -175,15 +168,12 @@ const ConteudoVisitante: React.FC<Props> = ({ onLoginSuccess }) => {
             <Form.Item label="Nome" name="nome" rules={[{ required: true, message: "Informe seu nome" }]}>
               <Input />
             </Form.Item>
-
             <Form.Item label="E-mail" name="email" rules={[{ required: true, message: "Informe seu e-mail" }]}>
               <Input type="email" />
             </Form.Item>
-
             <Form.Item label="Senha" name="senha" rules={[{ required: true, message: "Informe sua senha" }]}>
               <Input.Password />
             </Form.Item>
-
             <Form.Item>
               <Button type="primary" htmlType="submit" loading={loading}>
                 Registrar
@@ -199,37 +189,21 @@ const ConteudoVisitante: React.FC<Props> = ({ onLoginSuccess }) => {
       {conteudos.map((secao, index) => {
         const secaoNome = secao.itens.length > 0 ? secao.itens[0].secao : `Seção ${secao.ordem + 1}`;
         return (
-          <section key={index} style={{ marginBottom: 32, padding: 16, borderRadius: 8, backgroundColor: "#f5f5f5" }}>
+          <section key={index} className="section">
             <Title level={3} style={{ textAlign: "center", marginBottom: 16 }}>
               {secaoNome}
             </Title>
-
-            <div
-              style={{
-                display: "flex",
-                gap: 16,
-                overflowX: "auto",
-                paddingBottom: 8,
-                flexWrap: "wrap",
-                justifyContent: "center",
-              }}
-            >
+            <div className="cardsRow">
               {secao.itens.map((item) => (
                 <Card
                   key={item._id}
                   hoverable
-                  style={{ minWidth: 200, flex: "1 0 200px", maxWidth: 300 }}
+                  className="ant-card"
                   cover={
                     <img
                       alt={item.nome}
                       src={item.imagem}
                       onClick={() => openPreview(item.imagem)}
-                      style={{
-                        width: "100%",
-                        height: 150,
-                        objectFit: "cover",
-                        borderRadius: "0.5rem 0.5rem 0 0",
-                      }}
                     />
                   }
                 >
