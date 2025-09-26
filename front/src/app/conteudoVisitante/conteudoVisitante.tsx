@@ -36,8 +36,7 @@ const ConteudoVisitante: React.FC<Props> = ({ onLoginSuccess }) => {
   const [mode, setMode] = useState<"login" | "register">("login");
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [conteudos, setConteudos] = useState<Secao[]>([]);
-  const [previewVisible, setPreviewVisible] = useState(false);
-  const [previewImage, setPreviewImage] = useState("");
+
   const navigate = useNavigate();
   const location = useLocation();
   const API_BASE = import.meta.env.VITE_SERVER;
@@ -124,10 +123,7 @@ const ConteudoVisitante: React.FC<Props> = ({ onLoginSuccess }) => {
     }
   };
 
-  const openPreview = (img: string) => {
-    setPreviewImage(img);
-    setPreviewVisible(true);
-  };
+
 
   const linkify = (text: string) => {
     if (!text) return null;
@@ -218,36 +214,24 @@ const ConteudoVisitante: React.FC<Props> = ({ onLoginSuccess }) => {
                 <Card
                   key={item._id}
                   hoverable
-                  style={{
-                    minWidth: 280, // antes: 200
-                    flex: "1 0 280px", // antes: 200
-                    maxWidth: 350, // antes: 300
-                  }}
+                  className="customCard"
                   cover={
                     <img
                       alt={item.nome}
                       src={item.imagem}
-                      onClick={() => openPreview(item.imagem)}
-                      style={{
-                        width: "100%",
-                        height: 200, // antes: 150
-                        objectFit: "cover",
-                        borderRadius: "0.5rem 0.5rem 0 0",
-                      }}
+                      className="customCardImg"
                     />
                   }
                 >
                   <Card.Meta title={item.nome} description={linkify(item.descricao)} />
                 </Card>
+
               ))}
             </div>
           </section>
         );
       })}
 
-      <Modal open={previewVisible} footer={null} onCancel={() => setPreviewVisible(false)} centered>
-        <img src={previewImage} alt="Preview" style={{ maxWidth: "100%", maxHeight: "100%" }} />
-      </Modal>
     </div>
   );
 };

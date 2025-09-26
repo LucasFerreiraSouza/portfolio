@@ -17,7 +17,6 @@
   }
 }
 
-
 .container {
   width: 100%;
   padding: 2rem;
@@ -38,14 +37,15 @@
 
 .cardsRow {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); // preenche toda a largura
-  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); // cards maiores
+  gap: 20px;
   width: 100%;
 }
 
-.addCard, .ant-card {
-  width: 100%;       // ocupa toda a célula do grid
-  height: 250px;     // mesmo tamanho para todos os cards
+/* Card de adicionar novo item */
+.addCard {
+  width: 100%;
+  height: 320px; 
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -53,9 +53,6 @@
   text-align: center;
   border-radius: 1rem;
   overflow: hidden;
-}
-
-.addCard {
   border: 1px dashed #d9d9d9;
   cursor: pointer;
   background-color: #ffffff;
@@ -67,7 +64,7 @@
   }
 
   svg {
-    font-size: 30px;
+    font-size: 36px;
     margin-top: 1rem;
   }
 
@@ -76,35 +73,46 @@
   }
 }
 
-.ant-card {
+/* Cards principais */
+.customCard {
+  width: 100%;
+  height: 320px;       // card maior
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  text-align: center;
+  border-radius: 1rem;
+  overflow: hidden;
   cursor: grab;
+
   &:active {
     cursor: grabbing;
   }
 
-  img {
+  img.customCardImg {
     width: 100%;
-    height: 150px;        // altura fixa da imagem
-    object-fit: cover;    // garante crop centralizado e uniforme
+    height: 240px;        // imagem maior
+    object-fit: cover;    // crop centralizado
     border-radius: 0.5rem 0.5rem 0 0;
   }
-}
 
-.ant-card-meta-title {
-  font-weight: 600;
-  margin-top: 8px;
-}
+  .ant-card-meta-title {
+    font-weight: 600;
+    margin-top: 8px;
+  }
 
-.ant-card-meta-description {
-  font-size: 0.9rem;
-  color: #555;
+  .ant-card-meta-description {
+    font-size: 0.95rem;
+    color: #555;
 
-  a {
-    color: #1890ff;           // cor azul do Ant Design
-    text-decoration: underline;
-    word-break: break-word;    // quebra links longos
-    &:hover {
-      color: #40a9ff;
+    a {
+      color: #1890ff;
+      text-decoration: underline;
+      word-break: break-word;
+      &:hover {
+        color: #40a9ff;
+      }
     }
   }
 }
