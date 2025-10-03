@@ -259,55 +259,53 @@ export default function AuthContentPage() {
   };
 
   return (
-    <div className={styles.container}>
-      <Button
-        type="primary"
-        danger
-        onClick={handleLogout}
-        style={{ marginBottom: 16, float: "right" }}
-      >
+  <div className={styles.container}>
+    {/* Logout fixo no topo, fora das seções */}
+    <div className={styles.logoutWrapper}>
+      <Button type="primary" danger onClick={handleLogout}>
         Logout
       </Button>
+    </div>
 
-      <DragDropContext onDragEnd={onDragEnd}>
-        <Droppable droppableId="secoes-droppable" direction="vertical" type="SECAO">
-          {(provided) => (
-            <div ref={provided.innerRef} {...provided.droppableProps}>
-              {/* BOTÃO FIXO PARA USUÁRIO SEM CONTEÚDO */}
-              {secoes.length === 0 && (
-                <div className={styles.noSections} style={{ textAlign: "center", margin: "32px 0" }}>
-                  Nenhuma seção encontrada. Clique no botão abaixo para criar uma.
-                  <div style={{ marginTop: 16 }}>
-                    <Button
-                      type="dashed"
-                      icon={<PlusOutlined />}
-                      onClick={() => openFormModal()}
-                      className={styles.addCard}
-                    >
-                      Adicionar Conteúdo
-                    </Button>
-                  </div>
+    <DragDropContext onDragEnd={onDragEnd}>
+      <Droppable droppableId="secoes-droppable" direction="vertical" type="SECAO">
+        {(provided) => (
+          <div ref={provided.innerRef} {...provided.droppableProps}>
+            {secoes.length === 0 && (
+              <div className={styles.noSections}>
+                Nenhuma seção encontrada. Clique no botão abaixo para criar uma.
+                <div>
+                  <Button
+                    type="dashed"
+                    icon={<PlusOutlined />}
+                    onClick={() => openFormModal()}
+                    className={styles.addCard}
+                  >
+                    Adicionar Conteúdo
+                  </Button>
                 </div>
-              )}
+              </div>
+            )}
 
-              {secoes.map((secao, index) => (
-                <Draggable key={secao.nome} draggableId={secao.nome} index={index}>
-                  {(provided) => (
-                    <section
-                      ref={provided.innerRef}
-                      {...provided.draggableProps}
-                      {...provided.dragHandleProps}
-                      className={styles.section}
-                    >
-                      <Title level={3} className={styles.sectionTitle}>
-                        {secao.nome}
-                      </Title>
+            {secoes.map((secao, index) => (
+              <Draggable key={secao.nome} draggableId={secao.nome} index={index}>
+                {(provided) => (
+                  <section
+                    ref={provided.innerRef}
+                    {...provided.draggableProps}
+                    {...provided.dragHandleProps}
+                    className={styles.section}
+                  >
+                    <Title level={3} className={styles.sectionTitle}>
+                      {secao.nome}
+                    </Title>
 
-                      <Droppable droppableId={secao.nome} direction="horizontal" type="CONTEUDO">
-                        {(provided) => (
-                          <div className={styles.cardsWrapper} ref={provided.innerRef} {...provided.droppableProps}>
-                            {secao.itens.map((conteudo, index) => (
-                              <Draggable key={conteudo._id} draggableId={conteudo._id} index={index}>
+                    <Droppable droppableId={secao.nome} direction="horizontal" type="CONTEUDO">
+                      {(provided) => (
+                        <div className={styles.cardsWrapper} ref={provided.innerRef} {...provided.droppableProps}>
+                          <div className={styles.cardsInner}>
+                            {secao.itens.map((conteudo, idx) => (
+                              <Draggable key={conteudo._id} draggableId={conteudo._id} index={idx}>
                                 {(provided) => (
                                   <Card
                                     ref={provided.innerRef}
@@ -337,7 +335,7 @@ export default function AuthContentPage() {
                               </Draggable>
                             ))}
 
-                            {/* Botão "Adicionar Conteúdo" dentro de seção */}
+                            {/* Botão "Adicionar Conteúdo" */}
                             <Card
                               className={`${styles.customCard} ${styles.addCard}`}
                               onClick={() => openFormModal(secao.nome)}
@@ -348,57 +346,59 @@ export default function AuthContentPage() {
 
                             {provided.placeholder}
                           </div>
-                        )}
-                      </Droppable>
-                    </section>
-                  )}
-                </Draggable>
-              ))}
+                        </div>
+                      )}
+                    </Droppable>
+                  </section>
+                )}
+              </Draggable>
+            ))}
 
-              {provided.placeholder}
-            </div>
-          )}
-        </Droppable>
-      </DragDropContext>
+            {provided.placeholder}
+          </div>
+        )}
+      </Droppable>
+    </DragDropContext>
 
-      {/* Modal Preview */}
-      <Modal open={previewVisible} footer={null} onCancel={() => setPreviewVisible(false)} centered>
-        <img src={previewImage} alt="Preview" style={{ maxWidth: "100%", maxHeight: "100%" }} />
-      </Modal>
+    {/* Modal Preview */}
+    <Modal open={previewVisible} footer={null} onCancel={() => setPreviewVisible(false)} centered>
+      <img src={previewImage} alt="Preview" style={{ maxWidth: "100%", maxHeight: "100%" }} />
+    </Modal>
 
-      {/* Modal Form */}
-      <Modal
-        open={modalFormVisible}
-        title={editingConteudo ? "Editar Conteúdo" : "Adicionar Conteúdo"}
-        onCancel={() => setModalFormVisible(false)}
-        onOk={() => form.submit()}
-        okText="Salvar"
-      >
-        <Form form={form} layout="vertical" onFinish={handleFormSubmit}>
-          <Form.Item name="nome" label="Nome do Conteúdo" rules={[{ required: true, message: "Digite o nome" }]}>
-            <Input />
-          </Form.Item>
+    {/* Modal Form */}
+    <Modal
+      open={modalFormVisible}
+      title={editingConteudo ? "Editar Conteúdo" : "Adicionar Conteúdo"}
+      onCancel={() => setModalFormVisible(false)}
+      onOk={() => form.submit()}
+      okText="Salvar"
+    >
+      <Form form={form} layout="vertical" onFinish={handleFormSubmit}>
+        <Form.Item name="nome" label="Nome do Conteúdo" rules={[{ required: true, message: "Digite o nome" }]}>
+          <Input />
+        </Form.Item>
 
-          <Form.Item name="descricao" label="Descrição do Conteúdo" rules={[{ required: true, message: "Digite a descrição" }]}>
-            <Input.TextArea rows={3} />
-          </Form.Item>
+        <Form.Item name="descricao" label="Descrição do Conteúdo" rules={[{ required: true, message: "Digite a descrição" }]}>
+          <Input.TextArea rows={3} />
+        </Form.Item>
 
-          <Form.Item name="secao" label="Seção" rules={[{ required: true, message: "Digite o nome da seção" }]}>
-            <Input />
-          </Form.Item>
+        <Form.Item name="secao" label="Seção" rules={[{ required: true, message: "Digite o nome da seção" }]}>
+          <Input />
+        </Form.Item>
 
-          <Form.Item label="Imagem">
-            <Upload
-              beforeUpload={() => false}
-              fileList={fileList}
-              onChange={({ fileList }) => setFileList(fileList)}
-              listType="picture"
-            >
-              <Button icon={<UploadOutlined />}>Selecionar arquivo</Button>
-            </Upload>
-          </Form.Item>
-        </Form>
-      </Modal>
-    </div>
-  );
+        <Form.Item label="Imagem">
+          <Upload
+            beforeUpload={() => false}
+            fileList={fileList}
+            onChange={({ fileList }) => setFileList(fileList)}
+            listType="picture"
+          >
+            <Button icon={<UploadOutlined />}>Selecionar arquivo</Button>
+          </Upload>
+        </Form.Item>
+      </Form>
+    </Modal>
+  </div>
+);
+
 }

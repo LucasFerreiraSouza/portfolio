@@ -69,7 +69,9 @@ const ConteudoVisitante: React.FC<Props> = ({ onLoginSuccess }) => {
   const fetchConteudos = async () => {
     const usuario = getUsernameFromUrl();
     try {
-      const res = await axios.get(`${API_BASE}/api/usuarios/${usuario}/conteudos`);
+      const res = await axios.get(
+        `${API_BASE}/api/usuarios/${usuario}/conteudos`
+      );
       setConteudos(res.data);
     } catch (err) {
       console.error(err);
@@ -84,15 +86,22 @@ const ConteudoVisitante: React.FC<Props> = ({ onLoginSuccess }) => {
   const handleLogin = async (values: any) => {
     setLoading(true);
     try {
-      const res = await axios.post(`${API_BASE}/api/usuarios/authenticate`, values);
+      const res = await axios.post(
+        `${API_BASE}/api/usuarios/authenticate`,
+        values
+      );
       message.success("Login realizado com sucesso!");
-      const { token, usuario } = res.data as { token: string; usuario: Usuario };
+      const { token, usuario } = res.data as {
+        token: string;
+        usuario: Usuario;
+      };
       localStorage.setItem("token", token);
       localStorage.setItem("user", JSON.stringify(usuario));
       axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
       if (onLoginSuccess) onLoginSuccess(token, usuario);
       closeModal();
-      if (usuario.tipoPerfil === "admin") navigate("/admin", { replace: true });
+      if (usuario.tipoPerfil === "admin")
+        navigate("/admin", { replace: true });
       else navigate(Path.usuario, { replace: true });
     } catch (err: any) {
       message.error(err?.response?.data?.error || "Erro ao fazer login.");
@@ -108,7 +117,9 @@ const ConteudoVisitante: React.FC<Props> = ({ onLoginSuccess }) => {
       message.success("Registro realizado com sucesso! Faça login.");
       setMode("login");
     } catch (err: any) {
-      message.error(err?.response?.data?.message || "Erro ao registrar usuário.");
+      message.error(
+        err?.response?.data?.message || "Erro ao registrar usuário."
+      );
     } finally {
       setLoading(false);
     }
@@ -131,7 +142,11 @@ const ConteudoVisitante: React.FC<Props> = ({ onLoginSuccess }) => {
 
   return (
     <div className={styles.container}>
-      <Button type="primary" onClick={openModal} className={styles.loginButton}>
+      <Button
+        type="primary"
+        onClick={openModal}
+        className={styles.loginButton}
+      >
         Login / Registro
       </Button>
 
@@ -143,10 +158,18 @@ const ConteudoVisitante: React.FC<Props> = ({ onLoginSuccess }) => {
       >
         {mode === "login" ? (
           <Form layout="vertical" onFinish={handleLogin}>
-            <Form.Item label="E-mail" name="email" rules={[{ required: true, message: "Informe seu e-mail" }]}>
+            <Form.Item
+              label="E-mail"
+              name="email"
+              rules={[{ required: true, message: "Informe seu e-mail" }]}
+            >
               <Input type="email" />
             </Form.Item>
-            <Form.Item label="Senha" name="senha" rules={[{ required: true, message: "Informe sua senha" }]}>
+            <Form.Item
+              label="Senha"
+              name="senha"
+              rules={[{ required: true, message: "Informe sua senha" }]}
+            >
               <Input.Password />
             </Form.Item>
             <Form.Item>
@@ -160,13 +183,25 @@ const ConteudoVisitante: React.FC<Props> = ({ onLoginSuccess }) => {
           </Form>
         ) : (
           <Form layout="vertical" onFinish={handleRegister}>
-            <Form.Item label="Nome" name="nome" rules={[{ required: true, message: "Informe seu nome" }]}>
+            <Form.Item
+              label="Nome"
+              name="nome"
+              rules={[{ required: true, message: "Informe seu nome" }]}
+            >
               <Input />
             </Form.Item>
-            <Form.Item label="E-mail" name="email" rules={[{ required: true, message: "Informe seu e-mail" }]}>
+            <Form.Item
+              label="E-mail"
+              name="email"
+              rules={[{ required: true, message: "Informe seu e-mail" }]}
+            >
               <Input type="email" />
             </Form.Item>
-            <Form.Item label="Senha" name="senha" rules={[{ required: true, message: "Informe sua senha" }]}>
+            <Form.Item
+              label="Senha"
+              name="senha"
+              rules={[{ required: true, message: "Informe sua senha" }]}
+            >
               <Input.Password />
             </Form.Item>
             <Form.Item>
@@ -182,7 +217,10 @@ const ConteudoVisitante: React.FC<Props> = ({ onLoginSuccess }) => {
       </Modal>
 
       {conteudos.map((secao, index) => {
-        const secaoNome = secao.itens.length > 0 ? secao.itens[0].secao : `Seção ${secao.ordem + 1}`;
+        const secaoNome =
+          secao.itens.length > 0
+            ? secao.itens[0].secao
+            : `Seção ${secao.ordem + 1}`;
         return (
           <section key={index} className={styles.section}>
             <Title level={3} className={styles.sectionTitle}>
@@ -190,15 +228,33 @@ const ConteudoVisitante: React.FC<Props> = ({ onLoginSuccess }) => {
             </Title>
 
             <div className={styles.cardsWrapper}>
+            <div className={styles.cardsInner}>
               {secao.itens.map((item) => (
-                <Card key={item._id} hoverable className={styles.customCard} cover={<img alt={item.nome} src={item.imagem} className={styles.customCardImg} />}>
+                <Card
+                  key={item._id}
+                  hoverable
+                  className={styles.customCard}
+                  cover={
+                    <img
+                      alt={item.nome}
+                      src={item.imagem}
+                      className={styles.customCardImg}
+                    />
+                  }
+                >
                   <Card.Meta
                     title={item.nome}
-                    description={<div className={styles.cardDescription}>{linkify(item.descricao)}</div>}
+                    description={
+                      <div className={styles.cardDescription}>
+                        {linkify(item.descricao)}
+                      </div>
+                    }
                   />
                 </Card>
               ))}
             </div>
+          </div>
+
           </section>
         );
       })}
