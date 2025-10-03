@@ -3,6 +3,7 @@ import { Form, Input, Button, message, Modal, Card, Typography } from "antd";
 import axios from "axios";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Path } from "../../routes/constants";
+import styles from "./conteudoVisitante.module.scss"; // import do SCSS modular
 
 const { Title } = Typography;
 
@@ -41,7 +42,6 @@ const ConteudoVisitante: React.FC<Props> = ({ onLoginSuccess }) => {
   const location = useLocation();
   const API_BASE = import.meta.env.VITE_SERVER;
 
-  // Aplica token salvo no axios
   useEffect(() => {
     const token = localStorage.getItem("token");
     const userStr = localStorage.getItem("user");
@@ -86,23 +86,14 @@ const ConteudoVisitante: React.FC<Props> = ({ onLoginSuccess }) => {
     try {
       const res = await axios.post(`${API_BASE}/api/usuarios/authenticate`, values);
       message.success("Login realizado com sucesso!");
-
       const { token, usuario } = res.data as { token: string; usuario: Usuario };
-
       localStorage.setItem("token", token);
       localStorage.setItem("user", JSON.stringify(usuario));
       axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-
       if (onLoginSuccess) onLoginSuccess(token, usuario);
-
       closeModal();
-
-      // Navegação imediata sem setTimeout
-      if (usuario.tipoPerfil === "admin") {
-        navigate("/admin", { replace: true });
-      } else {
-        navigate(Path.usuario, { replace: true });
-      }
+      if (usuario.tipoPerfil === "admin") navigate("/admin", { replace: true });
+      else navigate(Path.usuario, { replace: true });
     } catch (err: any) {
       message.error(err?.response?.data?.error || "Erro ao fazer login.");
     } finally {
@@ -123,8 +114,6 @@ const ConteudoVisitante: React.FC<Props> = ({ onLoginSuccess }) => {
     }
   };
 
-
-
   const linkify = (text: string) => {
     if (!text) return null;
     const urlRegex = /(https?:\/\/[^\s]+)/g;
@@ -141,22 +130,25 @@ const ConteudoVisitante: React.FC<Props> = ({ onLoginSuccess }) => {
   };
 
   return (
-    <div style={{ padding: 16 }}>
-      <Button type="primary" onClick={openModal} style={{ marginBottom: 24 }}>
+    <div className={styles.container}>
+      <Button type="primary" onClick={openModal} className={styles.loginButton}>
         Login / Registro
       </Button>
 
-      <Modal title={mode === "login" ? "Login" : "Registrar"} open={isModalVisible} onCancel={closeModal} footer={null}>
+      <Modal
+        title={mode === "login" ? "Login" : "Registrar"}
+        open={isModalVisible}
+        onCancel={closeModal}
+        footer={null}
+      >
         {mode === "login" ? (
           <Form layout="vertical" onFinish={handleLogin}>
             <Form.Item label="E-mail" name="email" rules={[{ required: true, message: "Informe seu e-mail" }]}>
               <Input type="email" />
             </Form.Item>
-
             <Form.Item label="Senha" name="senha" rules={[{ required: true, message: "Informe sua senha" }]}>
               <Input.Password />
             </Form.Item>
-
             <Form.Item>
               <Button type="primary" htmlType="submit" loading={loading}>
                 Entrar
@@ -171,15 +163,12 @@ const ConteudoVisitante: React.FC<Props> = ({ onLoginSuccess }) => {
             <Form.Item label="Nome" name="nome" rules={[{ required: true, message: "Informe seu nome" }]}>
               <Input />
             </Form.Item>
-
             <Form.Item label="E-mail" name="email" rules={[{ required: true, message: "Informe seu e-mail" }]}>
               <Input type="email" />
             </Form.Item>
-
             <Form.Item label="Senha" name="senha" rules={[{ required: true, message: "Informe sua senha" }]}>
               <Input.Password />
             </Form.Item>
-
             <Form.Item>
               <Button type="primary" htmlType="submit" loading={loading}>
                 Registrar
@@ -195,43 +184,24 @@ const ConteudoVisitante: React.FC<Props> = ({ onLoginSuccess }) => {
       {conteudos.map((secao, index) => {
         const secaoNome = secao.itens.length > 0 ? secao.itens[0].secao : `Seção ${secao.ordem + 1}`;
         return (
-          <section key={index} style={{ marginBottom: 32, padding: 16, borderRadius: 8, backgroundColor: "#f5f5f5" }}>
-            <Title level={3} style={{ textAlign: "center", marginBottom: 16 }}>
+          <section key={index} className={styles.section}>
+            <Title level={3} className={styles.sectionTitle}>
               {secaoNome}
             </Title>
 
-            <div
-              style={{
-                display: "flex",
-                gap: 16,
-                overflowX: "auto",
-                paddingBottom: 8,
-                flexWrap: "wrap",
-                justifyContent: "center",
-              }}
-            >
+            <div className={styles.cardsWrapper}>
               {secao.itens.map((item) => (
-                <Card
-                  key={item._id}
-                  hoverable
-                  className="customCard"
-                  cover={
-                    <img
-                      alt={item.nome}
-                      src={item.imagem}
-                      className="customCardImg"
-                    />
-                  }
-                >
-                  <Card.Meta title={item.nome} description={linkify(item.descricao)} />
+                <Card key={item._id} hoverable className={styles.customCard} cover={<img alt={item.nome} src={item.imagem} className={styles.customCardImg} />}>
+                  <Card.Meta
+                    title={item.nome}
+                    description={<div className={styles.cardDescription}>{linkify(item.descricao)}</div>}
+                  />
                 </Card>
-
               ))}
             </div>
           </section>
         );
       })}
-
     </div>
   );
 };

@@ -22,7 +22,7 @@ import {
   DropResult,
 } from "react-beautiful-dnd";
 import { useNavigate } from "react-router-dom";
-import styles from "./conteudoUsuario.module.scss";
+import styles from "./conteudoUsuario.module.scss"; // estilos do visitante
 
 const { Title } = Typography;
 const { confirm } = Modal;
@@ -50,7 +50,7 @@ interface Secao {
 }
 
 export default function AuthContentPage() {
-  const token = localStorage.getItem("token"); // JWT do login
+  const token = localStorage.getItem("token");
   const [secoes, setSecoes] = useState<Secao[]>([]);
   const [previewVisible, setPreviewVisible] = useState(false);
   const [previewImage, setPreviewImage] = useState("");
@@ -60,16 +60,14 @@ export default function AuthContentPage() {
   const [fileList, setFileList] = useState<any[]>([]);
   const navigate = useNavigate();
 
-  // Função para logout
+  // Logout
   const handleLogout = async () => {
     try {
       const res = await fetch(`${API_URL}/api/usuarios/logout`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
       });
-
       if (!res.ok) throw new Error("Erro ao fazer logout");
-
       localStorage.removeItem("token");
       message.success("Logout realizado com sucesso!");
       navigate("/login");
@@ -79,6 +77,7 @@ export default function AuthContentPage() {
     }
   };
 
+  // Fetch conteúdos
   useEffect(() => {
     if (!token) {
       message.error("Você precisa estar logado!");
@@ -100,11 +99,7 @@ export default function AuthContentPage() {
       data.forEach((item) => {
         const secaoNome = item.secao?.nome || "Sem nome";
         if (!secoesMap[secaoNome]) {
-          secoesMap[secaoNome] = {
-            nome: secaoNome,
-            ordem: item.secao?.ordem || 0,
-            itens: [],
-          };
+          secoesMap[secaoNome] = { nome: secaoNome, ordem: item.secao?.ordem || 0, itens: [] };
         }
         secoesMap[secaoNome].itens.push(item);
       });
@@ -129,11 +124,7 @@ export default function AuthContentPage() {
 
     if (conteudo) {
       const { nome, descricao, imagem, secao } = conteudo;
-      form.setFieldsValue({
-        nome,
-        descricao,
-        secao: secao?.nome || "",
-      });
+      form.setFieldsValue({ nome, descricao, secao: secao?.nome || "" });
       setFileList([{ url: imagem, name: "imagem.png" }]);
     } else if (secaoNome) {
       form.setFieldsValue({ nome: "", descricao: "", secao: secaoNome });
@@ -145,7 +136,6 @@ export default function AuthContentPage() {
       const formData = new FormData();
       formData.append("nome", values.nome);
       formData.append("descricao", values.descricao);
-      // Envia apenas o nome da seção
       formData.append("secao", values.secao);
 
       if (fileList.length > 0 && fileList[0].originFileObj) {
@@ -155,17 +145,9 @@ export default function AuthContentPage() {
       const url = editingConteudo
         ? `${API_URL}/api/conteudos/${editingConteudo._id}`
         : `${API_URL}/api/conteudos`;
-
       const method = editingConteudo ? "PUT" : "POST";
 
-      const res = await fetch(url, {
-        method,
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      });
-
+      const res = await fetch(url, { method, headers: { Authorization: `Bearer ${token}` }, body: formData });
       if (!res.ok) {
         const errData = await res.json();
         throw new Error(errData.message || "Erro ao salvar conteúdo");
@@ -202,6 +184,7 @@ export default function AuthContentPage() {
     });
   };
 
+  // Drag & Drop
   const onDragEnd = async (result: DropResult) => {
     const { source, destination, type } = result;
     if (!destination) return;
@@ -213,25 +196,17 @@ export default function AuthContentPage() {
       setSecoes(newSecoes);
 
       try {
-        const secoesParaAtualizar = newSecoes.map((secao, index) => ({
-          nome: secao.nome,
-          ordem: index,
-        }));
-
+        const secoesParaAtualizar = newSecoes.map((secao, index) => ({ nome: secao.nome, ordem: index }));
         const res = await fetch(`${API_URL}/api/secoes/order`, {
           method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
           body: JSON.stringify({ secoes: secoesParaAtualizar }),
         });
-
         if (!res.ok) throw new Error("Falha ao atualizar ordem das seções");
         message.success("Ordem das seções atualizada!");
       } catch (err) {
         console.error(err);
-        message.error("Erro ao atualizar ordem das seções no backend.");
+        message.error("Erro ao atualizar ordem no backend.");
       }
       return;
     }
@@ -252,21 +227,13 @@ export default function AuthContentPage() {
       try {
         const secaoAtual = newSecoes.find((s) => s.nome === source.droppableId);
         if (!secaoAtual) return;
-
-        const itensParaAtualizar = secaoAtual.itens.map((item, index) => ({
-          id: item._id,
-          ordem: index,
-        }));
+        const itensParaAtualizar = secaoAtual.itens.map((item, index) => ({ id: item._id, ordem: index }));
 
         const res = await fetch(`${API_URL}/api/conteudos/order`, {
           method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
           body: JSON.stringify({ itens: itensParaAtualizar }),
         });
-
         if (!res.ok) throw new Error("Falha ao atualizar ordem no backend");
         message.success("Ordem de conteúdos atualizada!");
       } catch (err) {
@@ -292,9 +259,7 @@ export default function AuthContentPage() {
   };
 
   return (
-    
-    <div className={`${styles.container} ${styles.background}`}>
-      
+    <div className={styles.container}>
       <Button
         type="primary"
         danger
@@ -303,25 +268,27 @@ export default function AuthContentPage() {
       >
         Logout
       </Button>
-      
+
       <DragDropContext onDragEnd={onDragEnd}>
         <Droppable droppableId="secoes-droppable" direction="vertical" type="SECAO">
           {(provided) => (
             <div ref={provided.innerRef} {...provided.droppableProps}>
+              {/* BOTÃO FIXO PARA USUÁRIO SEM CONTEÚDO */}
               {secoes.length === 0 && (
-                <div className={styles.noSections}>
+                <div className={styles.noSections} style={{ textAlign: "center", margin: "32px 0" }}>
                   Nenhuma seção encontrada. Clique no botão abaixo para criar uma.
+                  <div style={{ marginTop: 16 }}>
+                    <Button
+                      type="dashed"
+                      icon={<PlusOutlined />}
+                      onClick={() => openFormModal()}
+                      className={styles.addCard}
+                    >
+                      Adicionar Conteúdo
+                    </Button>
+                  </div>
                 </div>
               )}
-
-              <Button
-                type="dashed"
-                icon={<PlusOutlined />}
-                onClick={() => openFormModal()}
-                style={{ marginBottom: 16 }}
-              >
-                Criar Conteúdo
-              </Button>
 
               {secoes.map((secao, index) => (
                 <Draggable key={secao.nome} draggableId={secao.nome} index={index}>
@@ -332,11 +299,13 @@ export default function AuthContentPage() {
                       {...provided.dragHandleProps}
                       className={styles.section}
                     >
-                      <Title level={2}>{secao.nome}</Title>
+                      <Title level={3} className={styles.sectionTitle}>
+                        {secao.nome}
+                      </Title>
 
                       <Droppable droppableId={secao.nome} direction="horizontal" type="CONTEUDO">
                         {(provided) => (
-                          <div className={styles.cardsRow} ref={provided.innerRef} {...provided.droppableProps}>
+                          <div className={styles.cardsWrapper} ref={provided.innerRef} {...provided.droppableProps}>
                             {secao.itens.map((conteudo, index) => (
                               <Draggable key={conteudo._id} draggableId={conteudo._id} index={index}>
                                 {(provided) => (
@@ -349,6 +318,7 @@ export default function AuthContentPage() {
                                       <img
                                         alt={conteudo.nome}
                                         src={conteudo.imagem || "https://via.placeholder.com/150"}
+                                        className={styles.customCardImg}
                                         onClick={() => openPreview(conteudo.imagem || "https://via.placeholder.com/150")}
                                       />
                                     }
@@ -356,14 +326,22 @@ export default function AuthContentPage() {
                                       <EditOutlined onClick={() => openFormModal(undefined, conteudo)} />,
                                       <DeleteOutlined onClick={() => handleDelete(conteudo._id)} />,
                                     ]}
+                                    className={styles.customCard}
                                   >
-                                    <Card.Meta title={conteudo.nome} description={linkify(conteudo.descricao)} />
+                                    <Card.Meta
+                                      title={conteudo.nome}
+                                      description={<div className={styles.cardDescription}>{linkify(conteudo.descricao)}</div>}
+                                    />
                                   </Card>
                                 )}
                               </Draggable>
                             ))}
 
-                            <Card className={styles.addCard} onClick={() => openFormModal(secao.nome)}>
+                            {/* Botão "Adicionar Conteúdo" dentro de seção */}
+                            <Card
+                              className={`${styles.customCard} ${styles.addCard}`}
+                              onClick={() => openFormModal(secao.nome)}
+                            >
                               <PlusOutlined />
                               <div>Adicionar Conteúdo</div>
                             </Card>
@@ -376,16 +354,19 @@ export default function AuthContentPage() {
                   )}
                 </Draggable>
               ))}
+
               {provided.placeholder}
             </div>
           )}
         </Droppable>
       </DragDropContext>
 
+      {/* Modal Preview */}
       <Modal open={previewVisible} footer={null} onCancel={() => setPreviewVisible(false)} centered>
         <img src={previewImage} alt="Preview" style={{ maxWidth: "100%", maxHeight: "100%" }} />
       </Modal>
 
+      {/* Modal Form */}
       <Modal
         open={modalFormVisible}
         title={editingConteudo ? "Editar Conteúdo" : "Adicionar Conteúdo"}
