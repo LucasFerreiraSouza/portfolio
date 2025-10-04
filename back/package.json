@@ -48,6 +48,7 @@
     "path": "^0.12.7",
     "promisify": "^0.0.3",
     "sharp": "^0.33.5",
+    "sib-api-v3-sdk": "^8.5.0",
     "storage": "^0.2.0",
     "streamifier": "^0.1.1",
     "uuid": "^9.0.1"

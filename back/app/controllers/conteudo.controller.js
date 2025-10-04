@@ -77,8 +77,26 @@ exports.create = async (req, res) => {
     if (!nome || !descricao || !secao)
       return res.status(400).json({ message: "Nome, descrição e seção são obrigatórios." });
 
+    // Limite de caracteres
+    if (nome.length > 1000 || descricao.length > 1000 || secao.length > 1000)
+      return res.status(400).json({ message: "Nome, descrição ou seção ultrapassa 1000 caracteres." });
+
     if (!req.file)
       return res.status(400).json({ message: "Imagem obrigatória." });
+
+    // Limite de tamanho da imagem
+    if (req.file.size > 1 * 1024 * 1024) // 1 MB
+      return res.status(400).json({ message: "Imagem excede 1 MB." });
+
+    // Limite de seções
+    const secoesUsuario = await Conteudo.distinct("secao.nome", { createdBy: req.user.id });
+    if (!secoesUsuario.includes(secao) && secoesUsuario.length >= 10)
+      return res.status(400).json({ message: "Você atingiu o limite máximo de 10 seções." });
+
+    // Limite de conteúdos por seção
+    const conteudosNaSecao = await Conteudo.countDocuments({ "secao.nome": secao, createdBy: req.user.id });
+    if (conteudosNaSecao >= 10)
+      return res.status(400).json({ message: "Você atingiu o limite máximo de 10 conteúdos nesta seção." });
 
     const resizedBuffer = await sharp(req.file.buffer)
       .resize({ width: 800, withoutEnlargement: true })
@@ -99,7 +117,7 @@ exports.create = async (req, res) => {
       secao: { nome: secao, ordem: 0 },
       ordem: nextOrder,
       createdBy: req.user.id,
-      createdByUsername: req.user.username, // pegando do token do usuário
+      createdByUsername: req.user.username,
     });
 
     res.status(201).json(conteudo);
@@ -107,6 +125,7 @@ exports.create = async (req, res) => {
     res.status(400).json({ message: err.message });
   }
 };
+
 
 // ===================
 // UPDATE CONTENT
@@ -120,8 +139,24 @@ exports.update = async (req, res) => {
     if (!nome || !descricao || !secao)
       return res.status(400).json({ message: "Nome, descrição e seção são obrigatórios." });
 
+    // Limite de caracteres
+    if (nome.length > 1000 || descricao.length > 1000 || secao.length > 1000)
+      return res.status(400).json({ message: "Nome, descrição ou seção ultrapassa 1000 caracteres." });
+
     const conteudoExistente = await Conteudo.findOne({ _id: id, createdBy: req.user.id });
     if (!conteudoExistente) return res.status(404).json({ message: "Conteúdo não encontrado." });
+
+    // Limite de seções (apenas se mudou de seção)
+    if (secao !== conteudoExistente.secao.nome) {
+      const secoesUsuario = await Conteudo.distinct("secao.nome", { createdBy: req.user.id });
+      if (!secoesUsuario.includes(secao) && secoesUsuario.length >= 10)
+        return res.status(400).json({ message: "Você atingiu o limite máximo de 10 seções." });
+
+      // Limite de conteúdos por seção nova
+      const conteudosNaSecao = await Conteudo.countDocuments({ "secao.nome": secao, createdBy: req.user.id });
+      if (conteudosNaSecao >= 10)
+        return res.status(400).json({ message: "Você atingiu o limite máximo de 10 conteúdos nesta seção." });
+    }
 
     let updateData = {
       nome,
@@ -129,7 +164,13 @@ exports.update = async (req, res) => {
       secao: { nome: secao, ordem: conteudoExistente.secao.ordem },
     };
 
+    // Se enviou nova imagem
     if (req.file) {
+      // Limite de tamanho da imagem
+      if (req.file.size > 1 * 1024 * 1024)
+        return res.status(400).json({ message: "Imagem excede 1 MB." });
+
+      // Deletar imagem antiga
       if (conteudoExistente.publicId) {
         await cloudinary.uploader.destroy(conteudoExistente.publicId);
       }
@@ -152,6 +193,7 @@ exports.update = async (req, res) => {
     res.status(400).json({ message: err.message });
   }
 };
+
 
 // ===================
 // DELETE CONTENT
